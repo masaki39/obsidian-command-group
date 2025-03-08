@@ -339,6 +339,94 @@ class CommandSettingTab extends PluginSettingTab {
 		this.eventListeners = [];
 	}
 
+	// ドラッグ＆ドロップのヘルパー関数
+	setupDragAndDrop(
+		element: HTMLElement, 
+		type: 'group' | 'command', 
+		index: number, 
+		groupIndex?: number,
+		onDrop?: (sourceType: string, sourceIndex: number, sourceGroupIndex: number, targetIndex: number, targetGroupIndex: number) => Promise<void>
+	) {
+		// データ形式の定義
+		const dataType = type === 'group' ? 'application/group-data' : 'application/command-data';
+		
+		// ドラッグ開始
+		this.addListener(element, 'dragstart', (e: Event) => {
+			const dragEvent = e as DragEvent;
+			if (type === 'command') {
+				e.stopPropagation(); // 親要素のドラッグイベントを防止
+			}
+			
+			if (dragEvent.dataTransfer) {
+				const data = type === 'group' 
+					? JSON.stringify({ type, groupIndex: index }) 
+					: JSON.stringify({ type, commandIndex: index, groupIndex });
+				dragEvent.dataTransfer.setData(dataType, data);
+			}
+			
+			setTimeout(() => {
+				element.classList.add('dragging');
+			}, 0);
+		});
+		
+		// ドラッグ終了
+		this.addListener(element, 'dragend', () => {
+			element.classList.remove('dragging');
+		});
+		
+		// ドラッグオーバー
+		this.addListener(element, 'dragover', (e: Event) => {
+			e.preventDefault();
+			if (type === 'command') {
+				e.stopPropagation(); // 親要素のドラッグオーバーイベントを防止
+			}
+			element.classList.add('drag-over');
+		});
+		
+		// ドラッグリーブ
+		this.addListener(element, 'dragleave', () => {
+			element.classList.remove('drag-over');
+		});
+		
+		// ドロップ
+		this.addListener(element, 'drop', async (e: Event) => {
+			e.preventDefault();
+			if (type === 'command') {
+				e.stopPropagation(); // 親要素のドロップイベントを防止
+			}
+			element.classList.remove('drag-over');
+			
+			const dragEvent = e as DragEvent;
+			
+			// グループデータの取得を試みる
+			try {
+				const groupDataStr = dragEvent.dataTransfer?.getData('application/group-data');
+				if (groupDataStr) {
+					const data = JSON.parse(groupDataStr);
+					if (data.type === 'group' && type === 'group' && onDrop) {
+						await onDrop('group', data.groupIndex, -1, index, -1);
+					}
+					return;
+				}
+			} catch (error) {
+				console.error('Error parsing group drag data:', error);
+			}
+			
+			// コマンドデータの取得を試みる
+			try {
+				const commandDataStr = dragEvent.dataTransfer?.getData('application/command-data');
+				if (commandDataStr && onDrop) {
+					const data = JSON.parse(commandDataStr);
+					if (data.type === 'command') {
+						await onDrop('command', data.commandIndex, data.groupIndex, index, groupIndex || -1);
+					}
+				}
+			} catch (error) {
+				console.error('Error parsing command drag data:', error);
+			}
+		});
+	}
+
 	// 新しいグループを追加する共通ロジック
 	async addNewGroup(groupName: string) {
 		// Add new group
@@ -366,6 +454,61 @@ class CommandSettingTab extends PluginSettingTab {
 		}).open();
 	}
 
+	// シンプルなモーダルを表示する共通関数
+	showSimpleModal(title: string, placeholder: string, defaultValue: string, onSubmit: (value: string) => void) {
+		const modal = new Modal(this.app);
+		modal.titleEl.setText(title);
+		
+		const contentEl = modal.contentEl;
+		const inputContainer = contentEl.createDiv();
+		
+		// 入力フィールド
+		const inputSetting = new Setting(inputContainer)
+			.setName(title)
+			.addText(text => {
+				text.setValue(defaultValue)
+					.setPlaceholder(placeholder);
+				
+				// 自動フォーカスと全選択
+				const inputEl = text.inputEl;
+				setTimeout(() => {
+					inputEl.focus();
+					inputEl.select();
+				}, 50);
+				
+				// Enterキーの処理
+				inputEl.addEventListener('keydown', (e) => {
+					if (e.key === 'Enter' && !e.isComposing) {
+						e.preventDefault();
+						onSubmit(inputEl.value || defaultValue);
+						modal.close();
+					}
+				});
+			});
+		
+		// ボタンコンテナ
+		const buttonContainer = contentEl.createDiv();
+		buttonContainer.style.display = 'flex';
+		buttonContainer.style.justifyContent = 'flex-end';
+		buttonContainer.style.marginTop = '1rem';
+		
+		// キャンセルボタン
+		const cancelButton = buttonContainer.createEl('button', {text: 'Cancel'});
+		cancelButton.addEventListener('click', () => modal.close());
+		
+		// 作成ボタン
+		const submitButton = buttonContainer.createEl('button', {text: 'Create'});
+		submitButton.style.marginLeft = '0.5rem';
+		submitButton.classList.add('mod-cta');
+		submitButton.addEventListener('click', () => {
+			const inputEl = inputSetting.controlEl.querySelector('input');
+			onSubmit(inputEl ? inputEl.value : defaultValue);
+			modal.close();
+		});
+		
+		modal.open();
+	}
+
 	display(): void {
 		// 既存のリスナーをクリーンアップ
 		this.removeAllListeners();
@@ -381,11 +524,64 @@ class CommandSettingTab extends PluginSettingTab {
 			cls: 'command-list-container'
 		});
 		
-		// Variables to track dragged items - グループとコマンドで別々の変数を使用
-		let draggedGroupItem: HTMLElement | null = null;
-		let draggedGroupIndex: number = -1;
-		let draggedCommandItem: HTMLElement | null = null;
-		let draggedCommandIndex: number = -1;
+		// ドロップ処理の共通関数
+		const handleDrop = async (
+			sourceType: string, 
+			sourceIndex: number, 
+			sourceGroupIndex: number, 
+			targetIndex: number, 
+			targetGroupIndex: number
+		) => {
+			if (sourceType === 'group' && targetGroupIndex === -1) {
+				// グループの移動
+				if (sourceIndex === targetIndex) return;
+				
+				const draggedGroup = this.plugin.settings.commandGroups[sourceIndex];
+				this.plugin.settings.commandGroups.splice(sourceIndex, 1);
+				this.plugin.settings.commandGroups.splice(targetIndex, 0, draggedGroup);
+			} else if (sourceType === 'command') {
+				// コマンドの移動
+				const sourceGroup = this.plugin.settings.commandGroups[sourceGroupIndex];
+				
+				if (targetGroupIndex === -1) {
+					// コマンドコンテナへのドロップ（グループの最後に追加）
+					targetGroupIndex = sourceGroupIndex;
+				}
+				
+				const targetGroup = this.plugin.settings.commandGroups[targetGroupIndex];
+				
+				if (!sourceGroup || !targetGroup) return;
+				
+				// 同じグループ内での移動
+				if (sourceGroupIndex === targetGroupIndex) {
+					const draggedCommand = sourceGroup.commands[sourceIndex];
+					sourceGroup.commands.splice(sourceIndex, 1);
+					
+					if (targetIndex < sourceGroup.commands.length) {
+						// 特定の位置に挿入
+						sourceGroup.commands.splice(targetIndex, 0, draggedCommand);
+					} else {
+						// 最後に追加
+						sourceGroup.commands.push(draggedCommand);
+					}
+				} else {
+					// 異なるグループ間での移動
+					const draggedCommand = sourceGroup.commands[sourceIndex];
+					sourceGroup.commands.splice(sourceIndex, 1);
+					
+					if (targetIndex < targetGroup.commands.length) {
+						// 特定の位置に挿入
+						targetGroup.commands.splice(targetIndex, 0, draggedCommand);
+					} else {
+						// 最後に追加
+						targetGroup.commands.push(draggedCommand);
+					}
+				}
+			}
+			
+			await this.plugin.saveSettingsAndRegisterCommands();
+			this.display();
+		};
 		
 		// Display existing command groups
 		this.plugin.settings.commandGroups.forEach((group, groupIndex) => {
@@ -396,6 +592,9 @@ class CommandSettingTab extends PluginSettingTab {
 					'draggable': 'true'
 				}
 			});
+			
+			// ドラッグ＆ドロップの設定
+			this.setupDragAndDrop(groupEl, 'group', groupIndex, undefined, handleDrop);
 			
 			// Add drag handle
 			const dragHandleEl = groupEl.createEl('div', {
@@ -471,78 +670,12 @@ class CommandSettingTab extends PluginSettingTab {
 				return button;
 			});
 			
-			// Group drag & drop events - イベントリスナー管理を改善
-			this.addListener(groupEl, 'dragstart', (e: Event) => {
-				const dragEvent = e as DragEvent;
-				draggedGroupItem = groupEl;
-				draggedGroupIndex = groupIndex;
-				draggedCommandItem = null;
-				draggedCommandIndex = -1;
-				
-				if (dragEvent.dataTransfer) {
-					dragEvent.dataTransfer.setData('application/group-data', JSON.stringify({
-						groupIndex
-					}));
-				}
-				
-				setTimeout(() => {
-					groupEl.classList.add('dragging');
-				}, 0);
-			});
-			
-			this.addListener(groupEl, 'dragend', () => {
-				groupEl.classList.remove('dragging');
-				draggedGroupItem = null;
-				draggedGroupIndex = -1;
-			});
-			
-			this.addListener(groupEl, 'dragover', (e: Event) => {
-				e.preventDefault();
-				groupEl.classList.add('drag-over');
-			});
-			
-			this.addListener(groupEl, 'dragleave', () => {
-				groupEl.classList.remove('drag-over');
-			});
-			
-			this.addListener(groupEl, 'drop', async (e: Event) => {
-				e.preventDefault();
-				e.stopPropagation();
-				groupEl.classList.remove('drag-over');
-				
-				const dragEvent = e as DragEvent;
-				
-				// 新しいデータ形式を使用
-				let sourceData = { groupIndex: -1 };
-				try {
-					const dataStr = dragEvent.dataTransfer?.getData('application/group-data');
-					if (dataStr) {
-						sourceData = JSON.parse(dataStr);
-					}
-				} catch (error) {
-					console.error('Error parsing drag data:', error);
-					return;
-				}
-				
-				const sourceGroupIndex = sourceData.groupIndex;
-				
-				if (sourceGroupIndex === -1 || sourceGroupIndex === groupIndex) return;
-				
-				// Swap groups
-				const draggedGroup = this.plugin.settings.commandGroups[sourceGroupIndex];
-				this.plugin.settings.commandGroups.splice(sourceGroupIndex, 1);
-				this.plugin.settings.commandGroups.splice(groupIndex, 0, draggedGroup);
-				
-				await this.plugin.saveSettingsAndRegisterCommands();
-				this.display();
-			});
-			
 			// Command list container
 			const commandsContainerEl = groupEl.createEl('div', {
 				cls: 'commands-container'
 			});
 			
-			// Add drop events to command container
+			// コマンドコンテナにドロップイベントを設定
 			this.addListener(commandsContainerEl, 'dragover', (e: Event) => {
 				e.preventDefault();
 				e.stopPropagation();
@@ -560,46 +693,18 @@ class CommandSettingTab extends PluginSettingTab {
 				
 				const dragEvent = e as DragEvent;
 				
-				// 新しいデータ形式を使用
-				let sourceData = { groupIndex: -1, commandIndex: -1 };
 				try {
-					const dataStr = dragEvent.dataTransfer?.getData('application/command-data');
-					if (dataStr) {
-						sourceData = JSON.parse(dataStr);
+					const commandDataStr = dragEvent.dataTransfer?.getData('application/command-data');
+					if (commandDataStr) {
+						const data = JSON.parse(commandDataStr);
+						if (data.type === 'command') {
+							// コンテナへのドロップは、グループの最後に追加する意味
+							await handleDrop('command', data.commandIndex, data.groupIndex, group.commands.length, groupIndex);
+						}
 					}
 				} catch (error) {
-					console.error('Error parsing drag data:', error);
-					return;
+					console.error('Error parsing command drag data:', error);
 				}
-				
-				const sourceGroupIndex = sourceData.groupIndex;
-				const sourceCommandIndex = sourceData.commandIndex;
-				
-				if (sourceGroupIndex === -1 || sourceCommandIndex === -1) return;
-				
-				// Moving within the same group
-				if (sourceGroupIndex === groupIndex) {
-					if (sourceCommandIndex === -1) return;
-					
-					// Move command to the end of the same group
-					const draggedCommand = this.plugin.settings.commandGroups[groupIndex].commands[sourceCommandIndex];
-					this.plugin.settings.commandGroups[groupIndex].commands.splice(sourceCommandIndex, 1);
-					this.plugin.settings.commandGroups[groupIndex].commands.push(draggedCommand);
-				} else {
-					// Moving between different groups
-					const sourceGroup = this.plugin.settings.commandGroups[sourceGroupIndex];
-					const targetGroup = this.plugin.settings.commandGroups[groupIndex];
-					
-					if (!sourceGroup || !targetGroup) return;
-					
-					// Move command
-					const draggedCommand = sourceGroup.commands[sourceCommandIndex];
-					sourceGroup.commands.splice(sourceCommandIndex, 1);
-					targetGroup.commands.push(draggedCommand);
-				}
-				
-				await this.plugin.saveSettingsAndRegisterCommands();
-				this.display();
 			});
 			
 			// 空のグループの場合のメッセージ表示
@@ -626,6 +731,9 @@ class CommandSettingTab extends PluginSettingTab {
 						'draggable': 'true'
 					}
 				});
+				
+				// コマンドのドラッグ＆ドロップ設定
+				this.setupDragAndDrop(commandItemEl, 'command', commandIndex, groupIndex, handleDrop);
 				
 				// Add drag handle
 				const commandDragHandleEl = commandItemEl.createEl('div', {
@@ -663,94 +771,6 @@ class CommandSettingTab extends PluginSettingTab {
 							this.display();
 						});
 					return button;
-				});
-				
-				// Command drag & drop events - コマンド用の変数を使用
-				this.addListener(commandItemEl, 'dragstart', (e: Event) => {
-					e.stopPropagation(); // Prevent triggering parent drag event
-					const dragEvent = e as DragEvent;
-					draggedCommandItem = commandItemEl;
-					draggedCommandIndex = commandIndex;
-					draggedGroupItem = null;
-					draggedGroupIndex = -1;
-					
-					// Ensure dataTransfer is available
-					if (dragEvent.dataTransfer) {
-						// より明確なデータ形式を使用
-						dragEvent.dataTransfer.setData('application/command-data', JSON.stringify({
-							groupIndex,
-							commandIndex
-						}));
-					}
-					
-					setTimeout(() => {
-						commandItemEl.classList.add('dragging');
-					}, 0);
-				});
-				
-				this.addListener(commandItemEl, 'dragend', () => {
-					commandItemEl.classList.remove('dragging');
-					draggedCommandItem = null;
-					draggedCommandIndex = -1;
-				});
-				
-				this.addListener(commandItemEl, 'dragover', (e: Event) => {
-					e.preventDefault();
-					e.stopPropagation(); // Prevent triggering parent drag event
-					commandItemEl.classList.add('drag-over');
-				});
-				
-				this.addListener(commandItemEl, 'dragleave', () => {
-					commandItemEl.classList.remove('drag-over');
-				});
-				
-				this.addListener(commandItemEl, 'drop', async (e: Event) => {
-					e.preventDefault();
-					e.stopPropagation(); // Prevent triggering parent drop event
-					commandItemEl.classList.remove('drag-over');
-					
-					const dragEvent = e as DragEvent;
-					
-					// 新しいデータ形式を使用
-					let sourceData = { groupIndex: -1, commandIndex: -1 };
-					try {
-						const dataStr = dragEvent.dataTransfer?.getData('application/command-data');
-						if (dataStr) {
-							sourceData = JSON.parse(dataStr);
-						}
-					} catch (error) {
-						console.error('Error parsing drag data:', error);
-						return;
-					}
-					
-					const sourceGroupIndex = sourceData.groupIndex;
-					const sourceCommandIndex = sourceData.commandIndex;
-					
-					if (sourceGroupIndex === -1 || sourceCommandIndex === -1) return;
-					
-					// Moving within the same group
-					if (sourceGroupIndex === groupIndex) {
-						if (sourceCommandIndex === -1) return;
-						
-						// Move command to the end of the same group
-						const draggedCommand = this.plugin.settings.commandGroups[groupIndex].commands[sourceCommandIndex];
-						this.plugin.settings.commandGroups[groupIndex].commands.splice(sourceCommandIndex, 1);
-						this.plugin.settings.commandGroups[groupIndex].commands.push(draggedCommand);
-					} else {
-						// Moving between different groups
-						const sourceGroup = this.plugin.settings.commandGroups[sourceGroupIndex];
-						const targetGroup = this.plugin.settings.commandGroups[groupIndex];
-						
-						if (!sourceGroup || !targetGroup) return;
-						
-						// Move command
-						const draggedCommand = sourceGroup.commands[sourceCommandIndex];
-						sourceGroup.commands.splice(sourceCommandIndex, 1);
-						targetGroup.commands.push(draggedCommand);
-					}
-					
-					await this.plugin.saveSettingsAndRegisterCommands();
-					this.display();
 				});
 			});
 		});
@@ -825,92 +845,18 @@ class CommandSettingTab extends PluginSettingTab {
 			.addButton(button => button
 				.setButtonText('Add')
 				.onClick(() => {
-					// Show text input dialog
-					const modal = new Modal(this.app);
-					modal.titleEl.setText('New Command Group');
-					
-					const contentEl = modal.contentEl;
-					const inputContainer = contentEl.createDiv();
-					
-					// Get next group ID
+					// 次のグループIDを取得
 					const nextGroupId = this.plugin.settings.nextGroupId;
 					
-					// Group name input field
-					const groupNameSetting = new Setting(inputContainer)
-						.setName('Group Name')
-						.addText(text => {
-							// Include ID in default name (remove "New")
-							text.setValue(`Group ${nextGroupId}`)
-								.setPlaceholder('Enter group name');
-							
-							// Select all text when input field is focused
-							const inputEl = text.inputEl;
-							inputEl.addEventListener('focus', () => {
-								inputEl.select();
-							});
-							
-							// Automatically focus and select all text when modal opens
-							setTimeout(() => {
-								inputEl.focus();
-								inputEl.select();
-							}, 50);
-							
-							// Add Enter key functionality to complete input
-							// Flag to track IME composition state
-							let isComposing = false;
-							
-							// IME composition start
-							inputEl.addEventListener('compositionstart', () => {
-								isComposing = true;
-							});
-							
-							// IME composition end
-							inputEl.addEventListener('compositionend', () => {
-								isComposing = false;
-							});
-							
-							inputEl.addEventListener('keydown', async (e) => {
-								// Ignore Enter key during IME composition
-								if (isComposing) return;
-								
-								if (e.key === 'Enter') {
-									e.preventDefault();
-									
-									const groupName = inputEl.value || `Group ${nextGroupId}`;
-									
-									// 共通ロジックを使用
-									await this.addNewGroup(groupName);
-									modal.close();
-								}
-							});
-						});
-					
-					// Button container
-					const buttonContainer = contentEl.createDiv();
-					buttonContainer.style.display = 'flex';
-					buttonContainer.style.justifyContent = 'flex-end';
-					buttonContainer.style.marginTop = '1rem';
-					
-					// Cancel button
-					const cancelButton = buttonContainer.createEl('button', {text: 'Cancel'});
-					cancelButton.addEventListener('click', () => {
-						modal.close();
-					});
-					
-					// Create button
-					const createButton = buttonContainer.createEl('button', {text: 'Create'});
-					createButton.style.marginLeft = '0.5rem';
-					createButton.classList.add('mod-cta');
-					createButton.addEventListener('click', async () => {
-						const inputEl = groupNameSetting.controlEl.querySelector('input');
-						const groupName = inputEl ? inputEl.value : `Group ${nextGroupId}`;
-						
-						// 共通ロジックを使用
-						await this.addNewGroup(groupName);
-						modal.close();
-					});
-					
-					modal.open();
+					// 共通モーダル関数を使用
+					this.showSimpleModal(
+						'New Command Group',
+						'Enter group name',
+						`Group ${nextGroupId}`,
+						async (groupName) => {
+							await this.addNewGroup(groupName);
+						}
+					);
 				}));
 	}
 }
