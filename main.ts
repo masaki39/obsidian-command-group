@@ -559,35 +559,45 @@ class CommandSettingTab extends PluginSettingTab {
 	async addNewGroup(groupName: string) {
 		try {
 			// Add new group
-			this.plugin.settings.commandGroups.push({
+			const newGroup = {
 				id: this.plugin.generateGroupId(),
 				name: groupName,
 				commands: []
-			});
+			};
 			
+			this.plugin.settings.commandGroups.push(newGroup);
 			await this.plugin.saveSettingsAndRegisterCommands();
 			this.display();
 			
-			// Open suggest modal to add command
-			new CommandSuggestModal(this.app, this.plugin, (selectedCommand) => {
-				// Add command to the last added group
-				const lastGroup = this.plugin.settings.commandGroups[this.plugin.settings.commandGroups.length - 1];
-				lastGroup.commands.push({
-					id: this.plugin.generateCommandId(),
-					obsidianCommand: selectedCommand.id
-				});
-				
-				this.plugin.saveSettingsAndRegisterCommands().then(() => {
-					this.display();
-				}).catch(error => {
-					console.error('Error saving settings:', error);
-					new Notice('Failed to save settings. Check console for details.');
-				});
-			}).open();
 		} catch (error) {
 			console.error('Error adding new group:', error);
 			new Notice('Failed to add new group. Check console for details.');
 		}
+	}
+	
+	// 特定のグループにコマンドを追加するためのモーダルを開く
+	openCommandSuggestForGroup(group: {
+		id: string;
+		name: string;
+		commands: {
+			id: string;
+			obsidianCommand: string;
+		}[];
+	}) {
+		new CommandSuggestModal(this.app, this.plugin, (selectedCommand) => {
+			// Add command to the specified group
+			group.commands.push({
+				id: this.plugin.generateCommandId(),
+				obsidianCommand: selectedCommand.id
+			});
+			
+			this.plugin.saveSettingsAndRegisterCommands().then(() => {
+				this.display();
+			}).catch(error => {
+				console.error('Error saving settings:', error);
+				new Notice('Failed to save settings. Check console for details.');
+			});
+		}).open();
 	}
 
 	// シンプルなモーダルを表示する共通関数
