@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, SuggestModal } from 'obsidian';
+import { App, Command, Modal, Notice, Plugin, PluginSettingTab, Setting, SuggestModal } from 'obsidian';
 
 // Extend Obsidian type definitions
 declare module 'obsidian' {
@@ -9,20 +9,7 @@ declare module 'obsidian' {
 			listCommands(): Command[];
 		};
 	}
-
-	interface Command {
-		id: string;
-		name: string;
-	}
 }
-
-// Obsidian command type
-type ObsidianCommand = {
-	id: string;
-	name: string;
-};
-
-// Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
 	commandGroups: { 
@@ -76,23 +63,93 @@ export default class MyPlugin extends Plugin {
 	optimizeIdCounters() {
 		// Get the set of group IDs currently in use
 		const usedGroupIds = new Set<number>();
+		const groupIdMap = new Map<string, boolean>();
+		
+		// Get the set of command IDs currently in use
+		const usedCommandIds = new Set<number>();
+		const commandIdMap = new Map<string, boolean>();
+		
+		// 重複IDを検出して修正するためのマップ
+		const duplicateGroupIds = new Map<string, number>();
+		const duplicateCommandIds = new Map<string, number>();
+		
+		// 一度のループで両方のIDを収集
 		this.settings.commandGroups.forEach(group => {
+			// Check for duplicate group IDs
+			if (groupIdMap.has(group.id)) {
+				console.warn(`Duplicate group ID found: ${group.id}. This will be fixed automatically.`);
+				duplicateGroupIds.set(group.id, (duplicateGroupIds.get(group.id) || 0) + 1);
+			} else {
+				groupIdMap.set(group.id, true);
+			}
+			
 			const groupIdNumber = parseInt(group.id.replace('group', ''));
 			if (!isNaN(groupIdNumber)) {
 				usedGroupIds.add(groupIdNumber);
 			}
-		});
-		
-		// Get the set of command IDs currently in use
-		const usedCommandIds = new Set<number>();
-		this.settings.commandGroups.forEach(group => {
+			
+			// コマンドIDも同時に処理
 			group.commands.forEach(cmd => {
+				// Check for duplicate command IDs
+				if (commandIdMap.has(cmd.id)) {
+					console.warn(`Duplicate command ID found: ${cmd.id}. This will be fixed automatically.`);
+					duplicateCommandIds.set(cmd.id, (duplicateCommandIds.get(cmd.id) || 0) + 1);
+				} else {
+					commandIdMap.set(cmd.id, true);
+				}
+				
 				const cmdIdNumber = parseInt(cmd.id.replace('command', ''));
 				if (!isNaN(cmdIdNumber)) {
 					usedCommandIds.add(cmdIdNumber);
 				}
 			});
 		});
+		
+		// 重複IDを修正
+		if (duplicateGroupIds.size > 0 || duplicateCommandIds.size > 0) {
+			// 次に使用可能なIDを見つける
+			let nextAvailableGroupId = 1;
+			while (usedGroupIds.has(nextAvailableGroupId)) {
+				nextAvailableGroupId++;
+			}
+			
+			let nextAvailableCommandId = 1;
+			while (usedCommandIds.has(nextAvailableCommandId)) {
+				nextAvailableCommandId++;
+			}
+			
+			// 重複グループIDを修正
+			this.settings.commandGroups.forEach(group => {
+				if (duplicateGroupIds.has(group.id)) {
+					const count = duplicateGroupIds.get(group.id) || 0;
+					if (count > 0) {
+						// 新しいIDを割り当て
+						const newId = `group${nextAvailableGroupId}`;
+						console.log(`Fixing duplicate group ID: ${group.id} -> ${newId}`);
+						group.id = newId;
+						usedGroupIds.add(nextAvailableGroupId);
+						nextAvailableGroupId++;
+						duplicateGroupIds.set(group.id, count - 1);
+					}
+				}
+				
+				// 重複コマンドIDを修正
+				group.commands.forEach(cmd => {
+					if (duplicateCommandIds.has(cmd.id)) {
+						const count = duplicateCommandIds.get(cmd.id) || 0;
+						if (count > 0) {
+							// 新しいIDを割り当て
+							const newId = `command${nextAvailableCommandId}`;
+							console.log(`Fixing duplicate command ID: ${cmd.id} -> ${newId}`);
+							cmd.id = newId;
+							usedCommandIds.add(nextAvailableCommandId);
+							nextAvailableCommandId++;
+							duplicateCommandIds.set(cmd.id, count - 1);
+						}
+					}
+				});
+			});
+		}
 		
 		// Find the smallest natural number not in use (group ID)
 		let nextGroupId = 1;
@@ -112,36 +169,80 @@ export default class MyPlugin extends Plugin {
 	}
 
 	async onload() {
-		await this.loadSettings();
+		try {
+			await this.loadSettings();
 
-		// Optimize ID counters
-		this.optimizeIdCounters();
+			// Optimize ID counters
+			this.optimizeIdCounters();
 
-		// Register commands for each command group
-		this.registerGroupCommands();
+			// Register commands for each command group
+			this.registerGroupCommands();
 
-		// Add settings tab
-		this.addSettingTab(new CommandSettingTab(this.app, this));
+			// Add settings tab
+			this.addSettingTab(new CommandSettingTab(this.app, this));
+		} catch (error) {
+			console.error('Error loading plugin:', error);
+			new Notice('Error loading Command Group plugin. Check console for details.');
+		}
 	}
 
 	onunload() {
 		// Cleanup when plugin is disabled
-		// Clean up registered commands when the plugin is disabled
-		const commands = (this.app as any).commands;
-		if (commands && typeof commands.removeCommand === 'function') {
-			// Find commands registered by this plugin
-			const pluginCommands = this.app.commands.listCommands()
-				.filter(cmd => cmd.id.startsWith(`${this.manifest.id}:`));
+		try {
+			// Clean up registered commands
+			const commands = (this.app as any).commands;
+			if (commands && typeof commands.removeCommand === 'function') {
+				// Find commands registered by this plugin
+				const pluginCommands = this.app.commands.listCommands()
+					.filter(cmd => cmd.id.startsWith(`${this.manifest.id}:`));
+				
+				// Remove each command
+				pluginCommands.forEach(cmd => {
+					try {
+						commands.removeCommand(cmd.id);
+					} catch (error) {
+						console.error(`Error removing command ${cmd.id}:`, error);
+					}
+				});
+				
+				console.log(`Command Group: Cleaned up ${pluginCommands.length} commands`);
+			}
 			
-			// Remove each command
-			pluginCommands.forEach(cmd => {
-				commands.removeCommand(cmd.id);
-			});
+			// Clean up any settings tab event listeners
+			try {
+				const settingTabs = (this.app as any).setting?.settingTabs;
+				if (settingTabs && Array.isArray(settingTabs)) {
+					const commandSettingTab = settingTabs.find(
+						(tab: any) => tab instanceof CommandSettingTab
+					) as CommandSettingTab | undefined;
+					
+					if (commandSettingTab) {
+						commandSettingTab.removeAllListeners();
+						console.log('Command Group: Cleaned up settings tab event listeners');
+					}
+				}
+			} catch (error) {
+				console.error('Error cleaning up settings tab:', error);
+			}
+		} catch (error) {
+			console.error('Error during plugin cleanup:', error);
 		}
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		const data = await this.loadData();
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+		
+		// 古いデータ形式からの移行処理
+		// data.jsonに古いcommandsプロパティが存在する場合は削除
+		if (data && 'commands' in data) {
+			// 古いcommandsプロパティを削除
+			delete (this.settings as any).commands;
+			
+			// 設定を保存して古いデータを削除
+			await this.saveSettings();
+			console.log('Migrated from old data format (removed commands property)');
+		}
 	}
 
 	async saveSettings() {
@@ -150,63 +251,77 @@ export default class MyPlugin extends Plugin {
 
 	// Save settings and re-register commands
 	async saveSettingsAndRegisterCommands() {
-		await this.saveSettings();
-		this.registerGroupCommands(); // Re-register commands
+		try {
+			// 設定を保存する前にIDカウンターを最適化
+			this.optimizeIdCounters();
+			
+			await this.saveSettings();
+			this.registerGroupCommands(); // Re-register commands
+		} catch (error) {
+			console.error('Error saving settings and registering commands:', error);
+			new Notice('Failed to save settings. Check console for details.');
+			throw error; // 呼び出し元でもエラーハンドリングできるように再スロー
+		}
 	}
 
 	// Register Obsidian commands for each command group
 	registerGroupCommands() {
-		// Get currently registered plugin commands
-		const existingCommands = this.app.commands.listCommands()
-			.filter(cmd => cmd.id.startsWith(`${this.manifest.id}:`));
-		
-		// List of command IDs that no longer exist in current settings
-		const commandIdsToRemove = new Set(
-			existingCommands.map(cmd => cmd.id.replace(`${this.manifest.id}:`, ''))
-		);
-		
-		// Register commands for each group
-		this.settings.commandGroups.forEach(group => {
-			const commandId = `${group.id}`;
+		try {
+			// Get currently registered plugin commands
+			const existingCommands = this.app.commands.listCommands()
+				.filter(cmd => cmd.id.startsWith(`${this.manifest.id}:`));
 			
-			// Remove this command from the removal list (still in use)
-			commandIdsToRemove.delete(commandId);
+			// List of command IDs that no longer exist in current settings
+			const commandIdsToRemove = new Set(
+				existingCommands.map(cmd => cmd.id.replace(`${this.manifest.id}:`, ''))
+			);
 			
-			// Register command (existing commands will be overwritten)
-			this.addCommand({
-				id: commandId,
-				name: `${group.name}`,
-				callback: () => {
-					// If there are no commands in the group, show a notification
-					if (group.commands.length === 0) {
-						new Notice('No commands in this group');
-						return;
+			// Register commands for each group
+			this.settings.commandGroups.forEach(group => {
+				const commandId = `${group.id}`;
+				
+				// Remove this command from the removal list (still in use)
+				commandIdsToRemove.delete(commandId);
+				
+				// Register command (existing commands will be overwritten)
+				this.addCommand({
+					id: commandId,
+					name: `${group.name}`,
+					callback: () => {
+						// If there are no commands in the group, show a notification
+						if (group.commands.length === 0) {
+							new Notice('No commands in this group');
+							return;
+						}
+						
+						// 常に選択モーダルを表示する（コマンドが1つでも）
+						new GroupCommandSuggestModal(this.app, this, group).open();
 					}
-					
-					// 常に選択モーダルを表示する（コマンドが1つでも）
-					new GroupCommandSuggestModal(this.app, this, group).open();
-				}
+				});
 			});
-		});
-		
-		// Remove unused commands
-		if (commandIdsToRemove.size > 0) {
-			console.log(`Command Group: ${commandIdsToRemove.size} unused commands will be removed`);
 			
-			// Actually remove the commands
-			// Use Obsidian's internal API to remove commands
-			// Note: This is an internal API and may change in the future
-			const commands = (this.app as any).commands;
-			if (commands && typeof commands.removeCommand === 'function') {
-				try {
-					commandIdsToRemove.forEach(commandId => {
-						const fullCommandId = `${this.manifest.id}:${commandId}`;
-						commands.removeCommand(fullCommandId);
-					});
-				} catch (error) {
-					console.error('Error removing commands:', error);
+			// Remove unused commands
+			if (commandIdsToRemove.size > 0) {
+				console.log(`Command Group: ${commandIdsToRemove.size} unused commands will be removed`);
+				
+				// Actually remove the commands
+				// Use Obsidian's internal API to remove commands
+				// Note: This is an internal API and may change in the future
+				const commands = (this.app as any).commands;
+				if (commands && typeof commands.removeCommand === 'function') {
+					try {
+						commandIdsToRemove.forEach(commandId => {
+							const fullCommandId = `${this.manifest.id}:${commandId}`;
+							commands.removeCommand(fullCommandId);
+						});
+					} catch (error) {
+						console.error('Error removing commands:', error);
+					}
 				}
 			}
+		} catch (error) {
+			console.error('Error registering group commands:', error);
+			new Notice('Error registering commands. Check console for details.');
 		}
 	}
 }
@@ -261,9 +376,18 @@ class GroupCommandSuggestModal extends SuggestModal<{id: string, name: string, c
 	onChooseSuggestion(item: {id: string, name: string, command: string}, evt: MouseEvent | KeyboardEvent): void {
 		// Execute the selected command
 		try {
+			// コマンドが存在するか確認
+			const command = this.app.commands.findCommand(item.command);
+			if (!command) {
+				new Notice(`Command not found: ${item.name} (${item.command})`);
+				console.error(`Command not found: ${item.command}`);
+				return;
+			}
+			
 			const success = this.app.commands.executeCommandById(item.command);
 			if (!success) {
 				new Notice(`Failed to execute command: ${item.name}`);
+				console.error(`Failed to execute command: ${item.command}`);
 			}
 		} catch (error) {
 			console.error(`Error executing command ${item.command}:`, error);
@@ -272,18 +396,18 @@ class GroupCommandSuggestModal extends SuggestModal<{id: string, name: string, c
 	}
 }
 
-class CommandSuggestModal extends SuggestModal<ObsidianCommand> {
+class CommandSuggestModal extends SuggestModal<Command> {
 	plugin: MyPlugin;
-	onSelect: (command: ObsidianCommand) => void;
+	onSelect: (command: Command) => void;
 
-	constructor(app: App, plugin: MyPlugin, onSelect: (command: ObsidianCommand) => void) {
+	constructor(app: App, plugin: MyPlugin, onSelect: (command: Command) => void) {
 		super(app);
 		this.plugin = plugin;
 		this.onSelect = onSelect;
 		this.setPlaceholder('Search commands...');
 	}
 
-	getSuggestions(query: string): ObsidianCommand[] {
+	getSuggestions(query: string): Command[] {
 		const commands = this.app.commands.listCommands();
 		if (!query) {
 			return commands;
@@ -296,7 +420,7 @@ class CommandSuggestModal extends SuggestModal<ObsidianCommand> {
 		);
 	}
 
-	renderSuggestion(command: ObsidianCommand, el: HTMLElement): void {
+	renderSuggestion(command: Command, el: HTMLElement): void {
 		// Display command name
 		el.createEl('div', { text: command.name, cls: 'command-name' });
 		
@@ -310,7 +434,7 @@ class CommandSuggestModal extends SuggestModal<ObsidianCommand> {
 		});
 	}
 
-	onChooseSuggestion(command: ObsidianCommand, evt: MouseEvent | KeyboardEvent): void {
+	onChooseSuggestion(command: Command, evt: MouseEvent | KeyboardEvent): void {
 		this.onSelect(command);
 	}
 }
@@ -334,7 +458,11 @@ class CommandSettingTab extends PluginSettingTab {
 	// すべてのイベントリスナーを削除するメソッド
 	removeAllListeners() {
 		this.eventListeners.forEach(({element, type, listener}) => {
-			element.removeEventListener(type, listener);
+			try {
+				element.removeEventListener(type, listener);
+			} catch (error) {
+				console.error(`Error removing event listener: ${error}`);
+			}
 		});
 		this.eventListeners = [];
 	}
@@ -429,29 +557,37 @@ class CommandSettingTab extends PluginSettingTab {
 
 	// 新しいグループを追加する共通ロジック
 	async addNewGroup(groupName: string) {
-		// Add new group
-		this.plugin.settings.commandGroups.push({
-			id: this.plugin.generateGroupId(),
-			name: groupName,
-			commands: []
-		});
-		
-		await this.plugin.saveSettingsAndRegisterCommands();
-		this.display();
-		
-		// Open suggest modal to add command
-		new CommandSuggestModal(this.app, this.plugin, (selectedCommand) => {
-			// Add command to the last added group
-			const lastGroup = this.plugin.settings.commandGroups[this.plugin.settings.commandGroups.length - 1];
-			lastGroup.commands.push({
-				id: this.plugin.generateCommandId(),
-				obsidianCommand: selectedCommand.id
+		try {
+			// Add new group
+			this.plugin.settings.commandGroups.push({
+				id: this.plugin.generateGroupId(),
+				name: groupName,
+				commands: []
 			});
 			
-			this.plugin.saveSettingsAndRegisterCommands().then(() => {
-				this.display();
-			});
-		}).open();
+			await this.plugin.saveSettingsAndRegisterCommands();
+			this.display();
+			
+			// Open suggest modal to add command
+			new CommandSuggestModal(this.app, this.plugin, (selectedCommand) => {
+				// Add command to the last added group
+				const lastGroup = this.plugin.settings.commandGroups[this.plugin.settings.commandGroups.length - 1];
+				lastGroup.commands.push({
+					id: this.plugin.generateCommandId(),
+					obsidianCommand: selectedCommand.id
+				});
+				
+				this.plugin.saveSettingsAndRegisterCommands().then(() => {
+					this.display();
+				}).catch(error => {
+					console.error('Error saving settings:', error);
+					new Notice('Failed to save settings. Check console for details.');
+				});
+			}).open();
+		} catch (error) {
+			console.error('Error adding new group:', error);
+			new Notice('Failed to add new group. Check console for details.');
+		}
 	}
 
 	// シンプルなモーダルを表示する共通関数
@@ -507,6 +643,241 @@ class CommandSettingTab extends PluginSettingTab {
 		});
 		
 		modal.open();
+	}
+
+	// グループ要素を作成するヘルパーメソッド
+	createGroupElement(
+		containerEl: HTMLElement, 
+		group: {
+			id: string;
+			name: string;
+			commands: {
+				id: string;
+				obsidianCommand: string;
+			}[];
+		}, 
+		groupIndex: number,
+		handleDrop: (sourceType: string, sourceIndex: number, sourceGroupIndex: number, targetIndex: number, targetGroupIndex: number) => Promise<void>
+	): HTMLElement {
+		const groupEl = containerEl.createEl('div', {
+			cls: 'command-group-container',
+			attr: {
+				'data-index': groupIndex.toString(),
+				'draggable': 'true'
+			}
+		});
+		
+		// ドラッグ＆ドロップの設定
+		this.setupDragAndDrop(groupEl, 'group', groupIndex, undefined, handleDrop);
+		
+		// Add drag handle
+		const dragHandleEl = groupEl.createEl('div', {
+			cls: 'drag-handle',
+			text: '⋮⋮'
+		});
+		
+		// Group setting
+		const groupSetting = new Setting(groupEl);
+		
+		// Group name input field (no label)
+		groupSetting.addText(text => {
+			text.setValue(group.name)
+				.setPlaceholder('Group name')
+				.onChange(async (value) => {
+					// Update only the group name, not the ID
+					group.name = value;
+					await this.plugin.saveSettingsAndRegisterCommands();
+				});
+			return text;
+		});
+		
+		// Copy ID button
+		groupSetting.addButton(button => {
+			button.setIcon('copy')
+				.setTooltip('Copy Group Command ID')
+				.onClick(() => {
+					// Copy command ID to clipboard with error handling
+					const commandId = `${this.plugin.manifest.id}:${group.id}`;
+					navigator.clipboard.writeText(commandId)
+						.then(() => {
+							new Notice(`Group Command ID copied to clipboard`);
+						})
+						.catch(err => {
+							new Notice(`Failed to copy: ${err.message}`);
+						});
+				});
+			return button;
+		});
+		
+		// Delete group button
+		groupSetting.addButton(button => {
+			button.setIcon('trash')
+				.setTooltip('Delete Group')
+				.onClick(async () => {
+					// Delete group
+					this.plugin.settings.commandGroups.splice(groupIndex, 1);
+					// Optimize ID counters
+					this.plugin.optimizeIdCounters();
+					await this.plugin.saveSettingsAndRegisterCommands();
+					this.display();
+				});
+			return button;
+		});
+		
+		// Add command button
+		groupSetting.addButton(button => {
+			button.setIcon('plus-circle')
+				.setTooltip('Add Command')
+				.onClick(() => {
+					// Open suggest modal
+					new CommandSuggestModal(this.app, this.plugin, (selectedCommand) => {
+						// Add selected command to group
+						group.commands.push({
+							id: this.plugin.generateCommandId(),
+							obsidianCommand: selectedCommand.id
+						});
+						this.plugin.saveSettingsAndRegisterCommands().then(() => {
+							this.display();
+						});
+					}).open();
+				});
+			return button;
+		});
+		
+		return groupEl;
+	}
+	
+	// コマンドコンテナを作成するヘルパーメソッド
+	createCommandsContainer(
+		groupEl: HTMLElement, 
+		group: {
+			id: string;
+			name: string;
+			commands: {
+				id: string;
+				obsidianCommand: string;
+			}[];
+		}, 
+		groupIndex: number,
+		handleDrop: (sourceType: string, sourceIndex: number, sourceGroupIndex: number, targetIndex: number, targetGroupIndex: number) => Promise<void>
+	): HTMLElement {
+		// Command list container
+		const commandsContainerEl = groupEl.createEl('div', {
+			cls: 'commands-container'
+		});
+		
+		// コマンドコンテナにドロップイベントを設定
+		this.addListener(commandsContainerEl, 'dragover', (e: Event) => {
+			e.preventDefault();
+			e.stopPropagation();
+			commandsContainerEl.classList.add('commands-container-drag-over');
+		});
+		
+		this.addListener(commandsContainerEl, 'dragleave', () => {
+			commandsContainerEl.classList.remove('commands-container-drag-over');
+		});
+		
+		this.addListener(commandsContainerEl, 'drop', async (e: Event) => {
+			e.preventDefault();
+			e.stopPropagation();
+			commandsContainerEl.classList.remove('commands-container-drag-over');
+			
+			const dragEvent = e as DragEvent;
+			
+			try {
+				const commandDataStr = dragEvent.dataTransfer?.getData('application/command-data');
+				if (commandDataStr) {
+					const data = JSON.parse(commandDataStr);
+					if (data.type === 'command') {
+						// コンテナへのドロップは、グループの最後に追加する意味
+						await handleDrop('command', data.commandIndex, data.groupIndex, group.commands.length, groupIndex);
+					}
+				}
+			} catch (error) {
+				console.error('Error parsing command drag data:', error);
+			}
+		});
+		
+		// 空のグループの場合のメッセージ表示
+		if (group.commands.length === 0) {
+			const emptyMessage = commandsContainerEl.createEl('div', {
+				cls: 'empty-commands-message',
+				text: 'No commands in this group. Use the + button to add commands.'
+			});
+			emptyMessage.style.color = 'var(--text-muted)';
+			emptyMessage.style.padding = '8px';
+			emptyMessage.style.fontStyle = 'italic';
+		}
+		
+		return commandsContainerEl;
+	}
+	
+	// コマンド要素を作成するヘルパーメソッド
+	createCommandElement(
+		containerEl: HTMLElement, 
+		command: {
+			id: string;
+			obsidianCommand: string;
+		}, 
+		commandIndex: number,
+		groupIndex: number,
+		handleDrop: (sourceType: string, sourceIndex: number, sourceGroupIndex: number, targetIndex: number, targetGroupIndex: number) => Promise<void>
+	): HTMLElement {
+		// Get Obsidian command
+		const obsidianCommand = this.app.commands.findCommand(command.obsidianCommand);
+		
+		const commandItemEl = containerEl.createEl('div', {
+			cls: 'command-item-container',
+			attr: {
+				'data-group-index': groupIndex.toString(),
+				'data-command-index': commandIndex.toString(),
+				'draggable': 'true'
+			}
+		});
+		
+		// コマンドのドラッグ＆ドロップ設定
+		this.setupDragAndDrop(commandItemEl, 'command', commandIndex, groupIndex, handleDrop);
+		
+		// Add drag handle
+		const commandDragHandleEl = commandItemEl.createEl('div', {
+			cls: 'drag-handle',
+			text: '⋮'
+		});
+		
+		// Command setting
+		const commandSetting = new Setting(commandItemEl);
+		
+		// Command name display
+		commandSetting.setName(obsidianCommand ? obsidianCommand.name : 'Invalid command');
+		commandSetting.nameEl.style.cursor = 'pointer';
+		commandSetting.nameEl.addEventListener('click', () => {
+			// Open suggest modal
+			new CommandSuggestModal(this.app, this.plugin, (selectedCommand) => {
+				// Set selected command
+				command.obsidianCommand = selectedCommand.id;
+				this.plugin.saveSettingsAndRegisterCommands().then(() => {
+					this.display();
+				});
+			}).open();
+		});
+		
+		// Delete command button
+		commandSetting.addButton(button => {
+			button.setIcon('trash')
+				.setTooltip('Delete Command')
+				.onClick(async () => {
+					// Delete command
+					const group = this.plugin.settings.commandGroups[groupIndex];
+					group.commands.splice(commandIndex, 1);
+					// Optimize ID counters
+					this.plugin.optimizeIdCounters();
+					await this.plugin.saveSettingsAndRegisterCommands();
+					this.display();
+				});
+			return button;
+		});
+		
+		return commandItemEl;
 	}
 
 	display(): void {
@@ -585,193 +956,15 @@ class CommandSettingTab extends PluginSettingTab {
 		
 		// Display existing command groups
 		this.plugin.settings.commandGroups.forEach((group, groupIndex) => {
-			const groupEl = commandListEl.createEl('div', {
-				cls: 'command-group-container',
-				attr: {
-					'data-index': groupIndex.toString(),
-					'draggable': 'true'
-				}
-			});
+			// グループ要素を作成
+			const groupEl = this.createGroupElement(commandListEl, group, groupIndex, handleDrop);
 			
-			// ドラッグ＆ドロップの設定
-			this.setupDragAndDrop(groupEl, 'group', groupIndex, undefined, handleDrop);
+			// コマンドコンテナを作成
+			const commandsContainerEl = this.createCommandsContainer(groupEl, group, groupIndex, handleDrop);
 			
-			// Add drag handle
-			const dragHandleEl = groupEl.createEl('div', {
-				cls: 'drag-handle',
-				text: '⋮⋮'
-			});
-			
-			// Group setting
-			const groupSetting = new Setting(groupEl);
-			
-			// Group name input field (no label)
-			groupSetting.addText(text => {
-				text.setValue(group.name)
-					.setPlaceholder('Group name')
-					.onChange(async (value) => {
-						// Update only the group name, not the ID
-						group.name = value;
-						await this.plugin.saveSettingsAndRegisterCommands();
-					});
-				return text;
-			});
-			
-			// Copy ID button
-			groupSetting.addButton(button => {
-				button.setIcon('copy')
-					.setTooltip('Copy Group Command ID')
-					.onClick(() => {
-						// Copy command ID to clipboard with error handling
-						const commandId = `${this.plugin.manifest.id}:${group.id}`;
-						navigator.clipboard.writeText(commandId)
-							.then(() => {
-								new Notice(`Group Command ID copied to clipboard`);
-							})
-							.catch(err => {
-								new Notice(`Failed to copy: ${err.message}`);
-							});
-					});
-				return button;
-			});
-			
-			// Delete group button
-			groupSetting.addButton(button => {
-				button.setIcon('trash')
-					.setTooltip('Delete Group')
-					.onClick(async () => {
-						// Delete group
-						this.plugin.settings.commandGroups.splice(groupIndex, 1);
-						// Optimize ID counters
-						this.plugin.optimizeIdCounters();
-						await this.plugin.saveSettingsAndRegisterCommands();
-						this.display();
-					});
-				return button;
-			});
-			
-			// Add command button
-			groupSetting.addButton(button => {
-				button.setIcon('plus-circle')
-					.setTooltip('Add Command')
-					.onClick(() => {
-						// Open suggest modal
-						new CommandSuggestModal(this.app, this.plugin, (selectedCommand) => {
-							// Add selected command to group
-							group.commands.push({
-								id: this.plugin.generateCommandId(),
-								obsidianCommand: selectedCommand.id
-							});
-							this.plugin.saveSettingsAndRegisterCommands().then(() => {
-								this.display();
-							});
-						}).open();
-					});
-				return button;
-			});
-			
-			// Command list container
-			const commandsContainerEl = groupEl.createEl('div', {
-				cls: 'commands-container'
-			});
-			
-			// コマンドコンテナにドロップイベントを設定
-			this.addListener(commandsContainerEl, 'dragover', (e: Event) => {
-				e.preventDefault();
-				e.stopPropagation();
-				commandsContainerEl.classList.add('commands-container-drag-over');
-			});
-			
-			this.addListener(commandsContainerEl, 'dragleave', () => {
-				commandsContainerEl.classList.remove('commands-container-drag-over');
-			});
-			
-			this.addListener(commandsContainerEl, 'drop', async (e: Event) => {
-				e.preventDefault();
-				e.stopPropagation();
-				commandsContainerEl.classList.remove('commands-container-drag-over');
-				
-				const dragEvent = e as DragEvent;
-				
-				try {
-					const commandDataStr = dragEvent.dataTransfer?.getData('application/command-data');
-					if (commandDataStr) {
-						const data = JSON.parse(commandDataStr);
-						if (data.type === 'command') {
-							// コンテナへのドロップは、グループの最後に追加する意味
-							await handleDrop('command', data.commandIndex, data.groupIndex, group.commands.length, groupIndex);
-						}
-					}
-				} catch (error) {
-					console.error('Error parsing command drag data:', error);
-				}
-			});
-			
-			// 空のグループの場合のメッセージ表示
-			if (group.commands.length === 0) {
-				const emptyMessage = commandsContainerEl.createEl('div', {
-					cls: 'empty-commands-message',
-					text: 'No commands in this group. Use the + button to add commands.'
-				});
-				emptyMessage.style.color = 'var(--text-muted)';
-				emptyMessage.style.padding = '8px';
-				emptyMessage.style.fontStyle = 'italic';
-			}
-			
-			// Display commands
+			// コマンドを表示
 			group.commands.forEach((command, commandIndex) => {
-				// Get Obsidian command
-				const obsidianCommand = this.app.commands.findCommand(command.obsidianCommand);
-				
-				const commandItemEl = commandsContainerEl.createEl('div', {
-					cls: 'command-item-container',
-					attr: {
-						'data-group-index': groupIndex.toString(),
-						'data-command-index': commandIndex.toString(),
-						'draggable': 'true'
-					}
-				});
-				
-				// コマンドのドラッグ＆ドロップ設定
-				this.setupDragAndDrop(commandItemEl, 'command', commandIndex, groupIndex, handleDrop);
-				
-				// Add drag handle
-				const commandDragHandleEl = commandItemEl.createEl('div', {
-					cls: 'drag-handle',
-					text: '⋮'
-				});
-				
-				// Command setting
-				const commandSetting = new Setting(commandItemEl);
-				
-				// Command name display
-				commandSetting.setName(obsidianCommand ? obsidianCommand.name : 'Invalid command');
-				commandSetting.nameEl.style.cursor = 'pointer';
-				commandSetting.nameEl.addEventListener('click', () => {
-					// Open suggest modal
-					new CommandSuggestModal(this.app, this.plugin, (selectedCommand) => {
-						// Set selected command
-						command.obsidianCommand = selectedCommand.id;
-						this.plugin.saveSettingsAndRegisterCommands().then(() => {
-							this.display();
-						});
-					}).open();
-				});
-				
-				// Delete command button
-				commandSetting.addButton(button => {
-					button.setIcon('trash')
-						.setTooltip('Delete Command')
-						.onClick(async () => {
-							// Delete command
-							group.commands.splice(commandIndex, 1);
-							// Optimize ID counters
-							this.plugin.optimizeIdCounters();
-							await this.plugin.saveSettingsAndRegisterCommands();
-							this.display();
-						});
-					return button;
-				});
+				this.createCommandElement(commandsContainerEl, command, commandIndex, groupIndex, handleDrop);
 			});
 		});
 		
@@ -845,18 +1038,23 @@ class CommandSettingTab extends PluginSettingTab {
 			.addButton(button => button
 				.setButtonText('Add')
 				.onClick(() => {
-					// 次のグループIDを取得
-					const nextGroupId = this.plugin.settings.nextGroupId;
-					
-					// 共通モーダル関数を使用
-					this.showSimpleModal(
-						'New Command Group',
-						'Enter group name',
-						`Group ${nextGroupId}`,
-						async (groupName) => {
-							await this.addNewGroup(groupName);
-						}
-					);
+					try {
+						// 次のグループIDを取得
+						const nextGroupId = this.plugin.settings.nextGroupId;
+						
+						// 共通モーダル関数を使用
+						this.showSimpleModal(
+							'New Command Group',
+							'Enter group name',
+							`Group ${nextGroupId}`,
+							async (groupName) => {
+								await this.addNewGroup(groupName);
+							}
+						);
+					} catch (error) {
+						console.error('Error showing modal:', error);
+						new Notice('Failed to show group creation modal. Check console for details.');
+					}
 				}));
 	}
 }
