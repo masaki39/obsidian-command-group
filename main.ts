@@ -288,13 +288,37 @@ export default class MyPlugin extends Plugin {
 					id: commandId,
 					name: `${group.name}`,
 					callback: () => {
-						// If there are no commands in the group, show a notification
+						// コマンドがない場合の処理
 						if (group.commands.length === 0) {
 							new Notice('No commands in this group');
 							return;
 						}
 						
-						// 常に選択モーダルを表示する（コマンドが1つでも）
+						// コマンドが1つの場合は直接実行
+						if (group.commands.length === 1) {
+							const command = group.commands[0];
+							try {
+								// コマンドが存在するか確認
+								const obsidianCommand = this.app.commands.findCommand(command.obsidianCommand);
+								if (!obsidianCommand) {
+									new Notice(`Command not found: ${command.obsidianCommand}`);
+									console.error(`Command not found: ${command.obsidianCommand}`);
+									return;
+								}
+								
+								const success = this.app.commands.executeCommandById(command.obsidianCommand);
+								if (!success) {
+									new Notice(`Failed to execute command: ${obsidianCommand.name}`);
+									console.error(`Failed to execute command: ${command.obsidianCommand}`);
+								}
+							} catch (error) {
+								console.error(`Error executing command ${command.obsidianCommand}:`, error);
+								new Notice(`Error executing command: ${error instanceof Error ? error.message : String(error)}`);
+							}
+							return;
+						}
+						
+						// 複数のコマンドがある場合は選択モーダルを表示
 						new GroupCommandSuggestModal(this.app, this, group).open();
 					}
 				});
