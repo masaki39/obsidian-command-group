@@ -6,7 +6,7 @@ declare module 'obsidian' {
 		commands: {
 			executeCommandById(id: string): boolean;
 			findCommand(id: string): Command | null;
-			listCommands(): Command[];
+			commands: Record<string, Command>;
 		};
 	}
 }
@@ -193,7 +193,7 @@ export default class MyPlugin extends Plugin {
 			const commands = (this.app as any).commands;
 			if (commands && typeof commands.removeCommand === 'function') {
 				// Find commands registered by this plugin
-				const pluginCommands = this.app.commands.listCommands()
+				const pluginCommands = Object.values(this.app.commands.commands)
 					.filter(cmd => cmd.id.startsWith(`${this.manifest.id}:`));
 				
 				// Remove each command
@@ -268,7 +268,7 @@ export default class MyPlugin extends Plugin {
 	registerGroupCommands() {
 		try {
 			// Get currently registered plugin commands
-			const existingCommands = this.app.commands.listCommands()
+			const existingCommands = Object.values(this.app.commands.commands)
 				.filter(cmd => cmd.id.startsWith(`${this.manifest.id}:`));
 			
 			// List of command IDs that no longer exist in current settings
@@ -408,13 +408,15 @@ class CommandSuggestModal extends SuggestModal<Command> {
 	}
 
 	getSuggestions(query: string): Command[] {
-		const commands = this.app.commands.listCommands();
+		const commandsObj = this.app.commands.commands;
+		const commands = Object.values(commandsObj) as Command[];
+		
 		if (!query) {
 			return commands;
 		}
 		
 		const lowerQuery = query.toLowerCase();
-		return commands.filter(command => 
+		return commands.filter((command: Command) => 
 			command.name.toLowerCase().includes(lowerQuery) || 
 			command.id.toLowerCase().includes(lowerQuery)
 		);
