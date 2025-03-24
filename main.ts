@@ -176,7 +176,7 @@ export default class MyPlugin extends Plugin {
 			this.optimizeIdCounters();
 
 			// Register commands for each command group
-			this.registerGroupCommands();
+			this.app.workspace.onLayoutReady(() => { this.registerGroupCommands();});
 
 			// Add settings tab
 			this.addSettingTab(new CommandSettingTab(this.app, this));
