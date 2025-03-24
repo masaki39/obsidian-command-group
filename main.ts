@@ -844,38 +844,6 @@ class CommandSettingTab extends PluginSettingTab {
 			cls: 'commands-container'
 		});
 		
-		// コマンドコンテナにドロップイベントを設定
-		this.addListener(commandsContainerEl, 'dragover', (e: Event) => {
-			e.preventDefault();
-			e.stopPropagation();
-			commandsContainerEl.classList.add('commands-container-drag-over');
-		});
-		
-		this.addListener(commandsContainerEl, 'dragleave', () => {
-			commandsContainerEl.classList.remove('commands-container-drag-over');
-		});
-		
-		this.addListener(commandsContainerEl, 'drop', async (e: Event) => {
-			e.preventDefault();
-			e.stopPropagation();
-			commandsContainerEl.classList.remove('commands-container-drag-over');
-			
-			const dragEvent = e as DragEvent;
-			
-			try {
-				const commandDataStr = dragEvent.dataTransfer?.getData('application/command-data');
-				if (commandDataStr) {
-					const data = JSON.parse(commandDataStr);
-					if (data.type === 'command') {
-						// コンテナへのドロップは、グループの最後に追加する意味
-						await handleDrop('command', data.commandIndex, data.groupIndex, group.commands.length, groupIndex);
-					}
-				}
-			} catch (error) {
-				console.error('Error parsing command drag data:', error);
-			}
-		});
-		
 		// 空のグループの場合のメッセージ表示
 		if (group.commands.length === 0) {
 			const emptyMessage = commandsContainerEl.createEl('div', {
