@@ -11,7 +11,7 @@ declare module 'obsidian' {
 	}
 }
 
-interface MyPluginSettings {
+interface CommandGroupSettings {
 	commandGroups: { 
 		id: string;
 		name: string; // Group name
@@ -24,7 +24,7 @@ interface MyPluginSettings {
 	nextCommandId: number; // Next command ID to use
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
+const DEFAULT_SETTINGS: CommandGroupSettings = {
 	commandGroups: [
 		{
 			id: 'group1',
@@ -40,8 +40,8 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 	nextCommandId: 4
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class CommandGroupPlugin extends Plugin {
+	settings: CommandGroupSettings;
 
 	// Helper function to generate a simple group ID
 	generateGroupId(): string {
@@ -352,7 +352,7 @@ export default class MyPlugin extends Plugin {
 
 // Modal for selecting a command from a group
 class GroupCommandSuggestModal extends SuggestModal<{id: string, name: string, command: string}> {
-	plugin: MyPlugin;
+	plugin: CommandGroupPlugin;
 	group: {
 		id: string;
 		name: string;
@@ -362,7 +362,7 @@ class GroupCommandSuggestModal extends SuggestModal<{id: string, name: string, c
 		}[];
 	};
 
-	constructor(app: App, plugin: MyPlugin, group: {
+	constructor(app: App, plugin: CommandGroupPlugin, group: {
 		id: string;
 		name: string;
 		commands: {
@@ -421,10 +421,10 @@ class GroupCommandSuggestModal extends SuggestModal<{id: string, name: string, c
 }
 
 class CommandSuggestModal extends SuggestModal<Command> {
-	plugin: MyPlugin;
+	plugin: CommandGroupPlugin;
 	onSelect: (command: Command) => void;
 
-	constructor(app: App, plugin: MyPlugin, onSelect: (command: Command) => void) {
+	constructor(app: App, plugin: CommandGroupPlugin, onSelect: (command: Command) => void) {
 		super(app);
 		this.plugin = plugin;
 		this.onSelect = onSelect;
@@ -466,11 +466,11 @@ class CommandSuggestModal extends SuggestModal<Command> {
 }
 
 class CommandSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+	plugin: CommandGroupPlugin;
 	// イベントリスナーの参照を保持するための配列
 	private eventListeners: Array<{element: HTMLElement, type: string, listener: EventListener}> = [];
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: CommandGroupPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
