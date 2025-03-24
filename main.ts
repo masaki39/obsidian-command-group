@@ -716,10 +716,50 @@ class CommandSettingTab extends PluginSettingTab {
 				'draggable': 'true'
 			}
 		});
-		
-		// ドラッグ＆ドロップの設定
+
+		// グループのドラッグ＆ドロップを設定
 		this.setupDragAndDrop(groupEl, 'group', groupIndex, undefined, handleDrop);
-		
+
+		// コマンドのドロップイベントを追加
+		this.addListener(groupEl, 'dragover', (e: Event) => {
+			e.preventDefault();
+			const dragEvent = e as DragEvent;
+			// コマンドデータの場合のみドロップを許可
+			if (dragEvent.dataTransfer?.types.includes('application/command-data')) {
+				e.stopPropagation(); // グループのドラッグイベントを停止
+				groupEl.classList.add('drag-over');
+			}
+		});
+
+		this.addListener(groupEl, 'dragleave', (e: Event) => {
+			const dragEvent = e as DragEvent;
+			if (dragEvent.dataTransfer?.types.includes('application/command-data')) {
+				groupEl.classList.remove('drag-over');
+			}
+		});
+
+		this.addListener(groupEl, 'drop', async (e: Event) => {
+			const dragEvent = e as DragEvent;
+			if (dragEvent.dataTransfer?.types.includes('application/command-data')) {
+				e.preventDefault();
+				e.stopPropagation();
+				groupEl.classList.remove('drag-over');
+				
+				try {
+					const commandDataStr = dragEvent.dataTransfer?.getData('application/command-data');
+					if (commandDataStr) {
+						const data = JSON.parse(commandDataStr);
+						if (data.type === 'command') {
+							// グループへのドロップは、そのグループの最後に追加する
+							await handleDrop('command', data.commandIndex, data.groupIndex, group.commands.length, groupIndex);
+						}
+					}
+				} catch (error) {
+					console.error('Error parsing command drag data:', error);
+				}
+			}
+		});
+
 		// Group setting
 		const groupSetting = new Setting(groupEl);
 		
