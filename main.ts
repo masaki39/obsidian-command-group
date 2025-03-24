@@ -28,7 +28,7 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 	commandGroups: [
 		{
 			id: 'group1',
-			name: 'Command Group 1',
+			name: 'Group 1',
 			commands: [
 				{ id: 'command1', obsidianCommand: 'app:go-back' },
 				{ id: 'command2', obsidianCommand: 'app:go-forward' },
@@ -706,43 +706,31 @@ class CommandSettingTab extends PluginSettingTab {
 		// ドラッグ＆ドロップの設定
 		this.setupDragAndDrop(groupEl, 'group', groupIndex, undefined, handleDrop);
 		
+		// Group setting
+		const groupSetting = new Setting(groupEl);
+		
+		// set group id
+		groupSetting.setName(group.id);
+		
 		// Add drag handle
 		const dragHandleEl = groupEl.createEl('div', {
 			cls: 'drag-handle',
 			text: '⋮⋮'
 		});
+		groupSetting.nameEl.prepend(dragHandleEl);
+		groupSetting.nameEl.style.display = 'flex';
 		
-		// Group setting
-		const groupSetting = new Setting(groupEl);
-		
-		// Group name input field (no label)
+		// Group name input field
 		groupSetting.addText(text => {
 			text.setValue(group.name)
 				.setPlaceholder('Group name')
 				.onChange(async (value) => {
-					// Update only the group name, not the ID
 					group.name = value;
 					await this.plugin.saveSettingsAndRegisterCommands();
 				});
+			// スタイルの調整
+			text.inputEl.style.width = '100%';
 			return text;
-		});
-		
-		// Copy ID button
-		groupSetting.addButton(button => {
-			button.setIcon('copy')
-				.setTooltip('Copy Group Command ID')
-				.onClick(() => {
-					// Copy command ID to clipboard with error handling
-					const commandId = `${this.plugin.manifest.id}:${group.id}`;
-					navigator.clipboard.writeText(commandId)
-						.then(() => {
-							new Notice(`Group Command ID copied to clipboard`);
-						})
-						.catch(err => {
-							new Notice(`Failed to copy: ${err.message}`);
-						});
-				});
-			return button;
 		});
 		
 		// Delete group button
@@ -1070,9 +1058,8 @@ class CommandSettingTab extends PluginSettingTab {
 		
 		// Add new command group button
 		new Setting(containerEl)
-			.setName('Add New Command Group')
 			.addButton(button => button
-				.setButtonText('Add')
+				.setButtonText('+ Add New Command Group')
 				.onClick(() => {
 					try {
 						// 次のグループIDを取得
