@@ -508,13 +508,22 @@ class CommandSettingTab extends PluginSettingTab {
 		this.addListener(element, 'dragstart', (e: Event) => {
 			const dragEvent = e as DragEvent;
 			if (type === 'command') {
-				e.stopPropagation(); // 親要素のドラッグイベントを防止
+				e.stopPropagation();
 			}
 			
 			if (dragEvent.dataTransfer) {
+				// グループインデックスを要素から取得
+				const currentGroupIndex = type === 'command' 
+					? parseInt(element.getAttribute('data-group-index') || '-1')
+					: index;
+					
 				const data = type === 'group' 
 					? JSON.stringify({ type, groupIndex: index }) 
-					: JSON.stringify({ type, commandIndex: index, groupIndex });
+					: JSON.stringify({ 
+						type, 
+						commandIndex: index, 
+						groupIndex: currentGroupIndex 
+					});
 				dragEvent.dataTransfer.setData(dataType, data);
 			}
 			
@@ -532,7 +541,7 @@ class CommandSettingTab extends PluginSettingTab {
 		this.addListener(element, 'dragover', (e: Event) => {
 			e.preventDefault();
 			if (type === 'command') {
-				e.stopPropagation(); // 親要素のドラッグオーバーイベントを防止
+				e.stopPropagation();
 			}
 			element.classList.add('drag-over');
 		});
@@ -546,11 +555,16 @@ class CommandSettingTab extends PluginSettingTab {
 		this.addListener(element, 'drop', async (e: Event) => {
 			e.preventDefault();
 			if (type === 'command') {
-				e.stopPropagation(); // 親要素のドロップイベントを防止
+				e.stopPropagation();
 			}
 			element.classList.remove('drag-over');
 			
 			const dragEvent = e as DragEvent;
+			
+			// 現在のグループインデックスを取得
+			const currentGroupIndex = type === 'command'
+				? parseInt(element.getAttribute('data-group-index') || '-1')
+				: -1;
 			
 			// グループデータの取得を試みる
 			try {
@@ -572,7 +586,7 @@ class CommandSettingTab extends PluginSettingTab {
 				if (commandDataStr && onDrop) {
 					const data = JSON.parse(commandDataStr);
 					if (data.type === 'command') {
-						await onDrop('command', data.commandIndex, data.groupIndex, index, groupIndex || -1);
+						await onDrop('command', data.commandIndex, data.groupIndex, index, currentGroupIndex);
 					}
 				}
 			} catch (error) {
