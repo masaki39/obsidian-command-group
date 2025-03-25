@@ -2,7 +2,7 @@
 
 # Obsidian Command Group
 
-> ![caution]
+> ![caution] Caution
 > This plugin is developed by LLM, then I checked it and modified it.
 > I confirm that this plugin works as expected, but it potentially has some vulnerabilities.
 
