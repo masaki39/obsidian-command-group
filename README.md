@@ -2,8 +2,9 @@
 
 # Obsidian Command Group
 
-> ![caution] Caution
+> ![warning]
 > This plugin is developed by LLM, then I checked it and modified it.
+> 
 > I confirm that this plugin works as expected, but it potentially has some vulnerabilities.
 
 ## Features
@@ -22,6 +23,10 @@
 
 ## Screenshots
 
-![](./assets/画面収録%202025-03-25%2017.40.15.gif)
+You can create a custom menu like a optional command palette.
 
 ![](./assets/画面収録%202025-03-25%2017.47.03.gif)
+
+You can set the group and commands by dragging and dropping in the settings tab.
+
+![](./assets/画面収録%202025-03-25%2017.40.15.gif)
