@@ -1,5 +1,3 @@
-<a href='https://ko-fi.com/Q5Q31CGF07' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
-
 # Obsidian Command Group
 
 > [!Warning]
@@ -30,3 +28,7 @@ You can create a custom menu like a optional command palette.
 You can set the group and commands by dragging and dropping in the settings tab.
 
 ![](./assets/画面収録%202025-03-25%2017.40.15.gif)
+
+## Donate
+
+<a href='https://ko-fi.com/Q5Q31CGF07' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
