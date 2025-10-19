@@ -1,5 +1,7 @@
 # Obsidian Command Group
 
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/masaki39/obsidian-command-group/total)
+
 > [!Warning]
 > This plugin is developed by LLM, then I checked it and modified it.
 > 
