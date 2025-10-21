@@ -1,6 +1,6 @@
 # Obsidian Command Group
 
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/masaki39/obsidian-command-group/total)
+![downloads](https://img.shields.io/github/downloads/masaki39/obsidian-command-group/main.js?logo=obsidian&label=downloads&color=%237c3aed)
 
 > [!Warning]
 > This plugin is developed by LLM, then I checked it and modified it.
