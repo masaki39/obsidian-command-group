@@ -1,7 +1,6 @@
 # Obsidian Command Group
 
-[![GitHub Release](https://img.shields.io/github/v/release/masaki39/obsidian-command-group?sort=semver&label=latest&color=%237c3aed)](https://github.com/masaki39/obsidian-command-group/releases/latest) [![Total Downloads](https://img.shields.io/github/downloads/masaki39/obsidian-command-group/main.js?logo=obsidian&label=total%20downloads&color=%237c3aed)](https://github.com/masaki39/obsidian-command-group/releases) [![Latest Downloads](https://img.shields.io/github/downloads/masaki39/obsidian-command-group/latest/main.js?logo=obsidian&label=latest%20downloads&color=%237c3aed)](https://github.com/masaki39/obsidian-command-group/releases/latest)
-
+[![GitHub Release](https://img.shields.io/github/v/release/masaki39/obsidian-command-group?sort=semver&label=latest&color=%237c3aed)](https://github.com/masaki39/obsidian-command-group/releases/latest) [![Total Downloads](https://img.shields.io/github/downloads/masaki39/obsidian-command-group/main.js?logo=obsidian&label=total%20downloads&color=%237c3aed)](https://github.com/masaki39/obsidian-command-group/releases)
 
 > [!Warning]
 > This plugin is developed by LLM, then I checked it and modified it.
