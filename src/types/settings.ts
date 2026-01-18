@@ -1,0 +1,39 @@
+import { App, Command } from 'obsidian';
+
+// Extend Obsidian type definitions
+declare module 'obsidian' {
+	interface App {
+		commands: {
+			executeCommandById(id: string): boolean;
+			findCommand(id: string): Command | null;
+			commands: Record<string, Command>;
+		};
+	}
+}
+
+export interface CommandGroupSettings {
+	commandGroups: {
+		id: string;
+		name: string; // Group name
+		commands: {
+			id: string;
+			obsidianCommand: string; // Obsidian command ID
+			sequenceKey?: string; // Optional sequence key (1 character: 0-9, a-z)
+		}[];
+	}[];
+	// Note: nextGroupId and nextCommandId have been removed in favor of hash-based IDs
+}
+
+export const DEFAULT_SETTINGS: CommandGroupSettings = {
+	commandGroups: [
+		{
+			id: 'group1',
+			name: 'Group 1',
+			commands: [
+				{ id: 'command1', obsidianCommand: 'app:go-back' },
+				{ id: 'command2', obsidianCommand: 'app:go-forward' },
+				{ id: 'command3', obsidianCommand: 'app:open-settings' }
+			]
+		}
+	]
+};
