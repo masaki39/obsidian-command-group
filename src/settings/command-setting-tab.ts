@@ -250,6 +250,34 @@ export class CommandSettingTab extends PluginSettingTab {
 			return text;
 		});
 
+		// Configure hotkey button
+		groupSetting.addButton(button => {
+			button.setIcon('any-key')
+				.setTooltip('Configure Hotkey')
+				.onClick(() => {
+					// Use internal Obsidian API with type assertion
+					const setting = (this.app as any).setting;
+					if (setting && typeof setting.openTabById === 'function') {
+						setting.openTabById('hotkeys');
+
+						// Pre-populate search with group name after tab loads
+						setTimeout(() => {
+							const tab = setting.activeTab;
+							if (tab?.searchComponent?.inputEl) {
+								tab.searchComponent.inputEl.value = group.name;
+								if (typeof tab.updateHotkeyVisibility === 'function') {
+									tab.updateHotkeyVisibility();
+								}
+							}
+						}, 100);
+					} else {
+						// Fallback if API doesn't exist
+						new Notice('Please open Settings → Hotkeys and search for: ' + group.name);
+					}
+				});
+			return button;
+		});
+
 		// Delete group button
 		groupSetting.addButton(button => {
 			button.setIcon('trash')
@@ -266,26 +294,6 @@ export class CommandSettingTab extends PluginSettingTab {
 							this.display();
 						}
 					).open();
-				});
-			return button;
-		});
-
-		// Add command button
-		groupSetting.addButton(button => {
-			button.setIcon('plus-circle')
-				.setTooltip('Add Command')
-				.onClick(() => {
-					// Open suggest modal
-					new CommandSuggestModal(this.app, (selectedCommand) => {
-						// Add selected command to group
-						group.commands.push({
-							id: generateCommandId(),
-							obsidianCommand: selectedCommand.id
-						});
-						this.plugin.saveSettingsAndRegisterCommands().then(() => {
-							this.display();
-						});
-					}).open();
 				});
 			return button;
 		});
@@ -317,12 +325,32 @@ export class CommandSettingTab extends PluginSettingTab {
 		if (group.commands.length === 0) {
 			const emptyMessage = commandsContainerEl.createEl('div', {
 				cls: 'empty-commands-message',
-				text: 'No commands in this group. Use the + button to add commands.'
+				text: 'No commands in this group. Use the button below to add commands.'
 			});
 			emptyMessage.style.color = 'var(--text-muted)';
 			emptyMessage.style.padding = '8px';
 			emptyMessage.style.fontStyle = 'italic';
 		}
+
+		// Add "Add Command" button at bottom of group
+		const addCommandContainer = commandsContainerEl.createEl('div', {
+			cls: 'add-command-button-container'
+		});
+
+		new Setting(addCommandContainer)
+			.addButton(button => button
+				.setButtonText('+ Add Command')
+				.onClick(() => {
+					new CommandSuggestModal(this.app, (selectedCommand) => {
+						group.commands.push({
+							id: generateCommandId(),
+							obsidianCommand: selectedCommand.id
+						});
+						this.plugin.saveSettingsAndRegisterCommands().then(() => {
+							this.display();
+						});
+					}).open();
+				}));
 
 		return commandsContainerEl;
 	}
@@ -395,19 +423,19 @@ export class CommandSettingTab extends PluginSettingTab {
 					try {
 						parseVimKey(trimmedValue);
 					} catch (error) {
-						new Notice('Invalid key sequence. Use Vim notation like <C-a>, <Esc>, or single characters.');
+						new Notice('Invalid key sequence. Use Vim notation like <C-a>, <Space>, or single characters.');
 						text.setValue(command.sequenceKey || '');
 						return;
 					}
 
-					// Normalize for comparison (lowercase)
-					const normalizedValue = trimmedValue.toLowerCase();
+					// Normalize for comparison (case-sensitive)
+					const normalizedValue = trimmedValue;
 
 					// Check for duplicates within the same group
 					const group = this.plugin.settings.commandGroups[groupIndex];
 					const duplicate = group.commands.some((cmd, idx) =>
 						idx !== commandIndex &&
-						cmd.sequenceKey?.toLowerCase() === normalizedValue
+						cmd.sequenceKey === normalizedValue
 					);
 
 					if (duplicate) {
@@ -585,6 +613,8 @@ export class CommandSettingTab extends PluginSettingTab {
 					border: none;
 					padding: 0;
 					flex-grow: 1;
+					display: flex;
+					align-items: center;
 				}
 				.drag-handle {
 					cursor: grab;
@@ -594,6 +624,14 @@ export class CommandSettingTab extends PluginSettingTab {
 				.empty-commands-message {
 					text-align: center;
 					margin: 10px 0;
+				}
+				.add-command-button-container {
+					margin-top: 8px;
+					text-align: right;
+				}
+				.add-command-button-container .setting-item {
+					border: none;
+					padding: 0;
 				}
 			`
 		});

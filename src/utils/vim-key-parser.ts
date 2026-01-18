@@ -80,7 +80,7 @@ export function parseVimKey(input: string): ParsedVimKey {
 		};
 	}
 
-	throw new Error(`Invalid key sequence: ${input}. Use Vim notation like <C-a>, <Esc>, or single characters.`);
+	throw new Error(`Invalid key sequence: ${input}. Use Vim notation like <C-a>, <Space>, or single characters.`);
 }
 
 /**
