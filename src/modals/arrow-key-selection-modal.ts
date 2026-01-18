@@ -1,4 +1,5 @@
 import { App, Modal, Notice } from 'obsidian';
+import { parseVimKey, formatKeyForDisplay } from '../utils/vim-key-parser';
 
 /**
  * Item to be displayed in the selection modal
@@ -77,7 +78,7 @@ export class ArrowKeySelectionModal extends Modal {
 			cls: 'arrow-key-modal-item'
 		});
 
-		// Create a container for the sequence key badge and item name
+		// Create a container for the item name and sequence key badge
 		const contentContainer = itemEl.createDiv({
 			cls: 'arrow-key-modal-item-content'
 		});
@@ -85,30 +86,34 @@ export class ArrowKeySelectionModal extends Modal {
 		contentContainer.style.alignItems = 'center';
 		contentContainer.style.gap = '8px';
 
-		// Add sequence key badge if present
+		// Add item name first
+		const nameEl = contentContainer.createDiv({
+			text: item.name,
+			cls: 'arrow-key-modal-item-name'
+		});
+		nameEl.style.flexGrow = '1';
+
+		// Add sequence key badge if present (after name for right alignment)
 		if (item.sequenceKey) {
 			const keyBadge = contentContainer.createDiv({
 				cls: 'arrow-key-modal-key-badge',
-				text: item.sequenceKey
+				text: formatKeyForDisplay(item.sequenceKey)
 			});
-			keyBadge.style.width = '24px';
+			keyBadge.style.width = 'auto';
+			keyBadge.style.minWidth = '24px';
 			keyBadge.style.height = '24px';
 			keyBadge.style.display = 'flex';
 			keyBadge.style.alignItems = 'center';
 			keyBadge.style.justifyContent = 'center';
 			keyBadge.style.borderRadius = '4px';
-			keyBadge.style.backgroundColor = 'var(--interactive-accent)';
-			keyBadge.style.color = 'var(--text-on-accent)';
-			keyBadge.style.fontWeight = 'bold';
+			keyBadge.style.padding = '0 6px';
+			keyBadge.style.backgroundColor = 'var(--background-modifier-border)';
+			keyBadge.style.color = 'var(--text-muted)';
+			keyBadge.style.fontWeight = '500';
 			keyBadge.style.fontSize = '12px';
 			keyBadge.style.flexShrink = '0';
+			keyBadge.style.border = '1px solid var(--background-modifier-border)';
 		}
-
-		// Add item name
-		const nameEl = contentContainer.createDiv({
-			text: item.name,
-			cls: 'arrow-key-modal-item-name'
-		});
 
 		// Mouse hover handler
 		itemEl.addEventListener('mouseenter', () => {
@@ -176,14 +181,21 @@ export class ArrowKeySelectionModal extends Modal {
 			return false;
 		});
 
-		// Sequence key handlers (0-9, a-z)
-		// Register all possible sequence keys
-		const sequenceKeys = '0123456789abcdefghijklmnopqrstuvwxyz'.split('');
-		sequenceKeys.forEach(key => {
-			this.scope.register([], key, (evt) => {
-				this.handleSequenceKey(key);
-				return false;
-			});
+		// Sequence key handlers - dynamically register only keys that are used
+		this.items.forEach(item => {
+			if (item.sequenceKey) {
+				const sequenceKey = item.sequenceKey; // Store for use in closure
+				try {
+					const parsed = parseVimKey(sequenceKey);
+					this.scope.register(parsed.modifiers, parsed.key, (evt) => {
+						evt.preventDefault();
+						this.handleSequenceKey(sequenceKey);
+						return false;
+					});
+				} catch (error) {
+					console.error(`Failed to register sequence key "${sequenceKey}":`, error);
+				}
+			}
 		});
 	}
 
@@ -235,8 +247,9 @@ export class ArrowKeySelectionModal extends Modal {
 			}
 
 			.arrow-key-modal-item.is-selected .arrow-key-modal-key-badge {
-				background-color: var(--text-on-accent);
-				color: var(--interactive-accent);
+				background-color: var(--background-modifier-hover);
+				color: var(--text-normal);
+				border-color: var(--background-modifier-hover);
 			}
 
 			.arrow-key-modal-item-content {

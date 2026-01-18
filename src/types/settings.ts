@@ -18,7 +18,7 @@ export interface CommandGroupSettings {
 		commands: {
 			id: string;
 			obsidianCommand: string; // Obsidian command ID
-			sequenceKey?: string; // Optional sequence key (1 character: 0-9, a-z)
+			sequenceKey?: string; // Optional sequence key (Vim-style notation or single character)
 		}[];
 	}[];
 	// Note: nextGroupId and nextCommandId have been removed in favor of hash-based IDs

@@ -4,6 +4,7 @@ import { generateGroupId, generateCommandId } from '../utils/id-generator';
 import { CommandSuggestModal } from '../modals/command-suggest-modal';
 import { ConfirmationModal } from '../modals/confirmation-modal';
 import { SimpleInputModal } from '../modals/simple-input-modal';
+import { parseVimKey } from '../utils/vim-key-parser';
 
 /**
  * Settings tab for Command Group plugin
@@ -228,9 +229,6 @@ export class CommandSettingTab extends PluginSettingTab {
 		// Group setting
 		const groupSetting = new Setting(groupEl);
 
-		// set group id
-		groupSetting.setName(group.id);
-
 		// Add drag handle
 		const dragHandleEl = groupEl.createEl('div', {
 			cls: 'drag-handle',
@@ -384,22 +382,26 @@ export class CommandSettingTab extends PluginSettingTab {
 			text.setValue(command.sequenceKey || '')
 				.setPlaceholder('Key')
 				.onChange(async (value) => {
-					// Validate: only allow 1 character (0-9, a-z)
-					const normalizedValue = value.toLowerCase().trim();
+					const trimmedValue = value.trim();
 
-					if (normalizedValue === '') {
+					if (trimmedValue === '') {
 						// Allow clearing the sequence key
 						command.sequenceKey = undefined;
 						await this.plugin.saveSettingsAndRegisterCommands();
 						return;
 					}
 
-					// Only allow single alphanumeric character
-					if (!/^[0-9a-z]$/.test(normalizedValue)) {
-						new Notice('Sequence key must be a single character (0-9, a-z)');
+					// Validate using Vim key parser
+					try {
+						parseVimKey(trimmedValue);
+					} catch (error) {
+						new Notice('Invalid key sequence. Use Vim notation like <C-a>, <Esc>, or single characters.');
 						text.setValue(command.sequenceKey || '');
 						return;
 					}
+
+					// Normalize for comparison (lowercase)
+					const normalizedValue = trimmedValue.toLowerCase();
 
 					// Check for duplicates within the same group
 					const group = this.plugin.settings.commandGroups[groupIndex];
@@ -409,18 +411,18 @@ export class CommandSettingTab extends PluginSettingTab {
 					);
 
 					if (duplicate) {
-						new Notice(`Sequence key "${normalizedValue}" is already used in this group`);
+						new Notice(`Sequence key "${trimmedValue}" is already used in this group`);
 						text.setValue(command.sequenceKey || '');
 						return;
 					}
 
-					// Set the sequence key
-					command.sequenceKey = normalizedValue;
+					// Set the sequence key (preserve original case for display)
+					command.sequenceKey = trimmedValue;
 					await this.plugin.saveSettingsAndRegisterCommands();
 				});
 
-			// Style the input
-			text.inputEl.style.width = '45px';
+			// Style the input (wider to accommodate longer Vim notation)
+			text.inputEl.style.width = '100px';
 			text.inputEl.style.textAlign = 'center';
 			text.inputEl.style.fontWeight = 'bold';
 
