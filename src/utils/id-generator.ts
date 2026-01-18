@@ -26,10 +26,10 @@ function nanoid(length: number = ID_LENGTH): string {
 
 /**
  * Generate a unique group ID with hash format
- * @returns Group ID in format "group_xxxxxxxxxxxx"
+ * @returns Group ID in format "xxxxxxxxxxxx"
  */
 export function generateGroupId(): string {
-	return `group_${nanoid()}`;
+	return `${nanoid()}`;
 }
 
 /**

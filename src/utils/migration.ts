@@ -14,8 +14,8 @@ export interface MigrationResult {
  * Migrate settings from legacy ID format to hash-based ID format
  *
  * This function:
- * - Converts legacy group IDs (group1, group2, etc.) to hash format (group_xxxxxxxxxxxx)
- * - Converts legacy command IDs (command1, command2, etc.) to hash format (cmd_xxxxxxxxxxxx)
+ * - Converts legacy group IDs (group1, group2, etc.) to hash format (xxxxxxxxxxxx)
+ * - Converts legacy command IDs (command1, command2, etc.) to hash format (xxxxxxxxxxxx)
  * - Removes nextGroupId and nextCommandId fields
  * - Preserves all other data
  *
