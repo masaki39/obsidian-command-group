@@ -655,6 +655,7 @@ export class CommandSettingTab extends PluginSettingTab {
 				.setting-item {
 					border: none;
 					padding: 0;
+					margin: 0;
 					flex-grow: 1;
 					display: flex;
 					align-items: center;

@@ -2,26 +2,24 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/masaki39/obsidian-command-group?sort=semver&label=latest&color=%237c3aed)](https://github.com/masaki39/obsidian-command-group/releases/latest) [![Total Downloads](https://img.shields.io/github/downloads/masaki39/obsidian-command-group/main.js?logo=obsidian&label=total%20downloads&color=%237c3aed)](https://github.com/masaki39/obsidian-command-group/releases)
 
-> [!Warning]
-> This plugin is developed by LLM, then I checked it and modified it.
-> 
-> I confirm that this plugin works as expected, but it potentially has some vulnerabilities.
+Group and execute multiple Obsidian commands as custom command groups.
 
-## Features
+## ✨️Features
 
 - Create command groups to execute multiple commands.
 - Drag and drop commands to reorder them.
 - Drag and drop groups to reorder them.
+- [Vim-style key notation](#key-notation-guide) for sequence keys.
 
 ## Usage
 
 1. Enable community plugins in settings.
-2. Install via [BRAT](https://github.com/TfTHacker/obsidian42-brat).
+2. Install via [BRAT](https://github.com/TfTHacker/obsidian42-brat) (Recommended).
 3. Open Command Group settings tab.
 4. Create a new group or edit an existing group.
 5. Add commands to the group.
 
-## Key Notation Guide
+## ⚙️Key Notation Guide
 
 ### Basic Notation
 
@@ -75,7 +73,7 @@ The following keys are reserved for modal navigation and cannot be used as seque
 
 These keys are needed to navigate and close the command selection modal.
 
-### FAQ
+### 🙋FAQ
 
 **Q: What's the difference between `A` and `<S-a>`?**
 A: Both work identically and produce Shift+a. Use whichever feels more natural.
@@ -94,17 +92,3 @@ A: Click the **Configure Hotkey** button (🔑) in the group header, which opens
 
 **Q: What happens if I use a duplicate key in the same group?**
 A: The plugin will show an error and prevent saving duplicate keys within the same group. Each sequence key must be unique within its group.
-
-## Screenshots
-
-You can create a custom menu like a optional command palette.
-
-![](./assets/画面収録%202025-03-25%2017.47.03.gif)
-
-You can set the group and commands by dragging and dropping in the settings tab.
-
-![](./assets/画面収録%202025-03-25%2017.40.15.gif)
-
-## Donate
-
-<a href='https://ko-fi.com/Q5Q31CGF07' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
