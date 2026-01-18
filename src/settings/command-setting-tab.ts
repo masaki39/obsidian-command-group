@@ -12,7 +12,7 @@ import { SimpleInputModal } from '../modals/simple-input-modal';
 export class CommandSettingTab extends PluginSettingTab {
 	plugin: CommandGroupPlugin;
 	// イベントリスナーの参照を保持するための配列
-	private eventListeners: Array<{element: HTMLElement, type: string, listener: EventListener}> = [];
+	private eventListeners: Array<{ element: HTMLElement, type: string, listener: EventListener }> = [];
 
 	constructor(app: App, plugin: CommandGroupPlugin) {
 		super(app, plugin);
@@ -22,12 +22,12 @@ export class CommandSettingTab extends PluginSettingTab {
 	// イベントリスナーを追加し、参照を保持するヘルパーメソッド
 	addListener(element: HTMLElement, type: string, listener: EventListener) {
 		element.addEventListener(type, listener);
-		this.eventListeners.push({element, type, listener});
+		this.eventListeners.push({ element, type, listener });
 	}
 
 	// すべてのイベントリスナーを削除するメソッド
 	removeAllListeners() {
-		this.eventListeners.forEach(({element, type, listener}) => {
+		this.eventListeners.forEach(({ element, type, listener }) => {
 			try {
 				element.removeEventListener(type, listener);
 			} catch (error) {
@@ -420,7 +420,7 @@ export class CommandSettingTab extends PluginSettingTab {
 				});
 
 			// Style the input
-			text.inputEl.style.width = '40px';
+			text.inputEl.style.width = '45px';
 			text.inputEl.style.textAlign = 'center';
 			text.inputEl.style.fontWeight = 'bold';
 
@@ -448,11 +448,11 @@ export class CommandSettingTab extends PluginSettingTab {
 		// 既存のリスナーをクリーンアップ
 		this.removeAllListeners();
 
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', {text: 'Command Group Settings'});
+		containerEl.createEl('h2', { text: 'Command Group Settings' });
 
 		// Create draggable list
 		const commandListEl = containerEl.createEl('div', {
