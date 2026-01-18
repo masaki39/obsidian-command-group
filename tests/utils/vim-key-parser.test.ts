@@ -11,8 +11,8 @@ describe('parseVimKey', () => {
 
     test('parses uppercase letter', () => {
       const result = parseVimKey('Z');
-      expect(result.modifiers).toEqual([]);
-      expect(result.key).toBe('z'); // normalized to lowercase
+      expect(result.modifiers).toEqual(['Shift']); // uppercase means Shift is held
+      expect(result.key).toBe('z'); // key is lowercase
     });
 
     test('parses digit', () => {
@@ -140,6 +140,35 @@ describe('parseVimKey', () => {
       // Both should parse to the same result (modifiers normalized)
       expect(result1.modifiers).toEqual(result2.modifiers);
       expect(result1.key).toBe(result2.key);
+    });
+
+    test('uppercase letter A is equivalent to <S-a>', () => {
+      const result1 = parseVimKey('A');
+      const result2 = parseVimKey('<S-a>');
+      // Both should produce Shift+a
+      expect(result1.modifiers).toEqual(['Shift']);
+      expect(result2.modifiers).toEqual(['Shift']);
+      expect(result1.key).toBe('a');
+      expect(result2.key).toBe('a');
+    });
+
+    test('uppercase single letter vs Vim-style shift notation', () => {
+      // Single uppercase letter adds Shift automatically
+      const shiftA = parseVimKey('A');
+      expect(shiftA.modifiers).toEqual(['Shift']);
+      expect(shiftA.key).toBe('a');
+
+      // In angle brackets, uppercase is ignored (normalized to lowercase)
+      // Use explicit <S-> for Shift
+      const explicitShiftA = parseVimKey('<S-a>');
+      expect(explicitShiftA.modifiers).toEqual(['Shift']);
+      expect(explicitShiftA.key).toBe('a');
+
+      // Ctrl+Shift+a requires explicit <C-S-a>
+      const ctrlShiftA = parseVimKey('<C-S-a>');
+      expect(ctrlShiftA.modifiers).toContain('Ctrl');
+      expect(ctrlShiftA.modifiers).toContain('Shift');
+      expect(ctrlShiftA.key).toBe('a');
     });
   });
 });

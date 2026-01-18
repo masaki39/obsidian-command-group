@@ -73,10 +73,20 @@ export function parseVimKey(input: string): ParsedVimKey {
 
 	// Single character (backwards compatible)
 	if (trimmed.length === 1) {
-		const char = trimmed.toLowerCase();
+		const char = trimmed;
+
+		// Check if uppercase letter
+		if (/[A-Z]/.test(char)) {
+			return {
+				modifiers: ['Shift'],
+				key: char.toLowerCase()
+			};
+		}
+
+		// Lowercase or other characters
 		return {
 			modifiers: [],
-			key: char
+			key: char.toLowerCase()
 		};
 	}
 

@@ -247,7 +247,27 @@ export class CommandSettingTab extends PluginSettingTab {
 				});
 			// スタイルの調整
 			text.inputEl.style.width = '100%';
+			text.inputEl.style.minWidth = '200px';
+			text.inputEl.style.flexGrow = '1';
 			return text;
+		});
+
+		// Add Command button
+		groupSetting.addButton(button => {
+			button.setButtonText('+ Add')
+				.setTooltip('Add Command')
+				.onClick(() => {
+					new CommandSuggestModal(this.app, (selectedCommand) => {
+						group.commands.push({
+							id: generateCommandId(),
+							obsidianCommand: selectedCommand.id
+						});
+						this.plugin.saveSettingsAndRegisterCommands().then(() => {
+							this.display();
+						});
+					}).open();
+				});
+			return button;
 		});
 
 		// Configure hotkey button
@@ -325,32 +345,12 @@ export class CommandSettingTab extends PluginSettingTab {
 		if (group.commands.length === 0) {
 			const emptyMessage = commandsContainerEl.createEl('div', {
 				cls: 'empty-commands-message',
-				text: 'No commands in this group. Use the button below to add commands.'
+				text: 'No commands in this group. Use the "+ Add" button in the group header to add commands.'
 			});
 			emptyMessage.style.color = 'var(--text-muted)';
 			emptyMessage.style.padding = '8px';
 			emptyMessage.style.fontStyle = 'italic';
 		}
-
-		// Add "Add Command" button at bottom of group
-		const addCommandContainer = commandsContainerEl.createEl('div', {
-			cls: 'add-command-button-container'
-		});
-
-		new Setting(addCommandContainer)
-			.addButton(button => button
-				.setButtonText('+ Add Command')
-				.onClick(() => {
-					new CommandSuggestModal(this.app, (selectedCommand) => {
-						group.commands.push({
-							id: generateCommandId(),
-							obsidianCommand: selectedCommand.id
-						});
-						this.plugin.saveSettingsAndRegisterCommands().then(() => {
-							this.display();
-						});
-					}).open();
-				}));
 
 		return commandsContainerEl;
 	}
@@ -412,42 +412,85 @@ export class CommandSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					const trimmedValue = value.trim();
 
+					// Remove error styling on change
+					text.inputEl.style.border = '';
+
+					// Only handle clearing on change
 					if (trimmedValue === '') {
-						// Allow clearing the sequence key
 						command.sequenceKey = undefined;
 						await this.plugin.saveSettingsAndRegisterCommands();
 						return;
 					}
-
-					// Validate using Vim key parser
-					try {
-						parseVimKey(trimmedValue);
-					} catch (error) {
-						new Notice('Invalid key sequence. Use Vim notation like <C-a>, <Space>, or single characters.');
-						text.setValue(command.sequenceKey || '');
-						return;
-					}
-
-					// Normalize for comparison (case-sensitive)
-					const normalizedValue = trimmedValue;
-
-					// Check for duplicates within the same group
-					const group = this.plugin.settings.commandGroups[groupIndex];
-					const duplicate = group.commands.some((cmd, idx) =>
-						idx !== commandIndex &&
-						cmd.sequenceKey === normalizedValue
-					);
-
-					if (duplicate) {
-						new Notice(`Sequence key "${trimmedValue}" is already used in this group`);
-						text.setValue(command.sequenceKey || '');
-						return;
-					}
-
-					// Set the sequence key (preserve original case for display)
-					command.sequenceKey = trimmedValue;
-					await this.plugin.saveSettingsAndRegisterCommands();
 				});
+
+			let debounceTimer: NodeJS.Timeout | null = null;
+
+			// Validation function
+			const validateKey = async (value: string) => {
+				const trimmedValue = value.trim();
+
+				// Clear is always valid
+				if (trimmedValue === '') {
+					text.inputEl.style.border = '';
+					return true;
+				}
+
+				// Validate using Vim key parser
+				try {
+					parseVimKey(trimmedValue);
+				} catch (error) {
+					text.inputEl.style.border = '2px solid var(--background-modifier-error)';
+					new Notice('Invalid key sequence. Use Vim notation like <C-a>, <Space>, or single characters.');
+					return false;
+				}
+
+				// Check for duplicates within the same group
+				const group = this.plugin.settings.commandGroups[groupIndex];
+				const duplicate = group.commands.some((cmd, idx) =>
+					idx !== commandIndex &&
+					cmd.sequenceKey === trimmedValue
+				);
+
+				if (duplicate) {
+					text.inputEl.style.border = '2px solid var(--background-modifier-error)';
+					new Notice(`Sequence key "${trimmedValue}" is already used in this group`);
+					return false;
+				}
+
+				// Valid - clear error styling and save
+				text.inputEl.style.border = '';
+				command.sequenceKey = trimmedValue;
+				await this.plugin.saveSettingsAndRegisterCommands();
+				return true;
+			};
+
+			// Debounced validation on input (optional live feedback)
+			this.addListener(text.inputEl, 'input', () => {
+				if (debounceTimer) {
+					clearTimeout(debounceTimer);
+				}
+				debounceTimer = setTimeout(() => {
+					const currentValue = text.inputEl.value;
+					if (currentValue.trim() !== '') {
+						validateKey(currentValue);
+					}
+				}, 500);
+			});
+
+			// Validate on blur (when user leaves the field)
+			this.addListener(text.inputEl, 'blur', async () => {
+				if (debounceTimer) {
+					clearTimeout(debounceTimer);
+				}
+				const currentValue = text.inputEl.value;
+				const isValid = await validateKey(currentValue);
+
+				// If invalid, revert to previous value
+				if (!isValid && currentValue.trim() !== '') {
+					text.setValue(command.sequenceKey || '');
+					text.inputEl.style.border = '';
+				}
+			});
 
 			// Style the input (wider to accommodate longer Vim notation)
 			text.inputEl.style.width = '100px';
@@ -625,13 +668,50 @@ export class CommandSettingTab extends PluginSettingTab {
 					text-align: center;
 					margin: 10px 0;
 				}
-				.add-command-button-container {
-					margin-top: 8px;
-					text-align: right;
+
+				/* Mobile responsive styles */
+				@media screen and (max-width: 768px) {
+					.command-group-container {
+						padding: 10px;
+						margin-bottom: 12px;
+					}
+					.commands-container {
+						margin-left: 16px;
+						margin-top: 10px;
+					}
+					.command-item-container {
+						padding: 4px;
+						margin-bottom: 6px;
+					}
+					.setting-item {
+						flex-wrap: wrap;
+						gap: 4px;
+					}
 				}
-				.add-command-button-container .setting-item {
-					border: none;
-					padding: 0;
+
+				@media screen and (max-width: 480px) {
+					.command-group-container {
+						padding: 8px;
+					}
+					.commands-container {
+						margin-left: 8px;
+					}
+					.setting-item {
+						flex-direction: column;
+						align-items: flex-start;
+					}
+					.setting-item-control {
+						width: 100%;
+					}
+					/* Ensure buttons are touch-friendly */
+					button {
+						min-height: 44px;
+						min-width: 44px;
+					}
+					/* Stack group header elements on very small screens */
+					.command-group-container .setting-item {
+						gap: 8px;
+					}
 				}
 			`
 		});
