@@ -22,6 +22,7 @@ export class ArrowKeySelectionModal extends Modal {
 	private itemElements: HTMLElement[] = [];
 	private listContainer: HTMLElement;
 	private groupName: string;
+	private sequenceKeyHandler: (event: KeyboardEvent) => void;
 
 	constructor(
 		app: App,
@@ -181,32 +182,64 @@ export class ArrowKeySelectionModal extends Modal {
 			return false;
 		});
 
-		// Sequence key handlers - dynamically register only keys that are used
-		this.items.forEach(item => {
-			if (item.sequenceKey) {
-				const sequenceKey = item.sequenceKey; // Store for use in closure
-				try {
-					const parsed = parseVimKey(sequenceKey);
-					this.scope.register(parsed.modifiers, parsed.key, (evt) => {
-						evt.preventDefault();
-						this.handleSequenceKey(sequenceKey);
-						return false;
-					});
-				} catch (error) {
-					console.error(`Failed to register sequence key "${sequenceKey}":`, error);
-				}
-			}
-		});
+		// Sequence key handlers - use direct keydown event for better compatibility
+		// This allows special characters and different keyboard layouts to work correctly
+		// Listen at document level to ensure we capture all keydown events when modal is open
+		this.sequenceKeyHandler = this.handleSequenceKeyEvent.bind(this);
+		document.addEventListener('keydown', this.sequenceKeyHandler, true);
 	}
 
-	private handleSequenceKey(key: string) {
-		// Find item with matching sequence key
-		const matchingItem = this.items.find(item =>
-			item.sequenceKey?.toLowerCase() === key.toLowerCase()
-		);
+	private handleSequenceKeyEvent(event: KeyboardEvent) {
+		// Skip if it's a reserved navigation key
+		const reservedKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape'];
+		if (reservedKeys.includes(event.key)) {
+			return; // Let the scope handlers handle these
+		}
 
-		if (matchingItem) {
-			this.selectItem(matchingItem);
+		// Normalize event key and determine if it's an alphabetic character
+		const isAlphabetic = event.key.length === 1 && /[a-zA-Z]/.test(event.key);
+		const eventKey = isAlphabetic && /[A-Z]/.test(event.key)
+			? event.key.toLowerCase()
+			: event.key;
+
+		// Get modifiers from the event
+		// For non-alphabetic single characters (like *, @, #), the Shift state is
+		// already encoded in event.key, so we should not include Shift in modifiers
+		const eventModifiers: string[] = [];
+		if (event.ctrlKey) eventModifiers.push('Ctrl');
+		if (event.altKey) eventModifiers.push('Alt');
+		if (event.metaKey) eventModifiers.push('Meta');
+
+		// Only include Shift for alphabetic characters, special keys, or when explicitly used with modifiers
+		if (event.shiftKey && (isAlphabetic || event.key.length > 1)) {
+			eventModifiers.push('Shift');
+		}
+
+		// Try to match against registered sequence keys
+		for (const item of this.items) {
+			if (!item.sequenceKey) continue;
+
+			try {
+				const parsed = parseVimKey(item.sequenceKey);
+
+				// Normalize parsed modifiers (sort for comparison)
+				const parsedModifiers = [...parsed.modifiers].sort();
+				const sortedEventModifiers = [...eventModifiers].sort();
+
+				// Compare modifiers and key
+				const modifiersMatch = JSON.stringify(parsedModifiers) === JSON.stringify(sortedEventModifiers);
+				const keyMatch = parsed.key === eventKey;
+
+				if (modifiersMatch && keyMatch) {
+					event.preventDefault();
+					event.stopPropagation();
+					this.selectItem(item);
+					return;
+				}
+			} catch (error) {
+				// Skip invalid sequence keys
+				continue;
+			}
 		}
 	}
 
@@ -265,6 +298,10 @@ export class ArrowKeySelectionModal extends Modal {
 
 	onClose() {
 		const { contentEl } = this;
+		// Clean up event listener
+		if (this.sequenceKeyHandler) {
+			document.removeEventListener('keydown', this.sequenceKeyHandler, true);
+		}
 		contentEl.empty();
 	}
 }
