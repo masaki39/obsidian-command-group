@@ -27,12 +27,12 @@ export interface CommandGroupSettings {
 export const DEFAULT_SETTINGS: CommandGroupSettings = {
 	commandGroups: [
 		{
-			id: 'group1',
-			name: 'Group 1',
+			id: 'grp_example_001',
+			name: 'Example Group',
 			commands: [
-				{ id: 'command1', obsidianCommand: 'app:go-back' },
-				{ id: 'command2', obsidianCommand: 'app:go-forward' },
-				{ id: 'command3', obsidianCommand: 'app:open-settings' }
+				{ id: 'cmd_example_001', obsidianCommand: 'app:go-back' },
+				{ id: 'cmd_example_002', obsidianCommand: 'app:go-forward' },
+				{ id: 'cmd_example_003', obsidianCommand: 'app:open-settings' }
 			]
 		}
 	]

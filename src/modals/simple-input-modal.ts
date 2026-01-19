@@ -31,21 +31,21 @@ export class SimpleInputModal extends Modal {
 
 		const inputContainer = contentEl.createDiv();
 
-		// 入力フィールド
+		// Input field
 		const inputSetting = new Setting(inputContainer)
 			.setName(this.title)
 			.addText(text => {
 				text.setValue(this.defaultValue)
 					.setPlaceholder(this.placeholder);
 
-				// 自動フォーカスと全選択
+				// Auto focus and select all
 				const inputEl = text.inputEl;
 				setTimeout(() => {
 					inputEl.focus();
 					inputEl.select();
 				}, 50);
 
-				// Enterキーの処理
+				// Handle Enter key
 				inputEl.addEventListener('keydown', (e) => {
 					if (e.key === 'Enter' && !e.isComposing) {
 						e.preventDefault();
@@ -55,17 +55,17 @@ export class SimpleInputModal extends Modal {
 				});
 			});
 
-		// ボタンコンテナ
+		// Button container
 		const buttonContainer = contentEl.createDiv();
 		buttonContainer.style.display = 'flex';
 		buttonContainer.style.justifyContent = 'flex-end';
 		buttonContainer.style.marginTop = '1rem';
 
-		// キャンセルボタン
+		// Cancel button
 		const cancelButton = buttonContainer.createEl('button', {text: 'Cancel'});
 		cancelButton.addEventListener('click', () => this.close());
 
-		// 作成ボタン
+		// Submit button
 		const submitButton = buttonContainer.createEl('button', {text: 'Create'});
 		submitButton.style.marginLeft = '0.5rem';
 		submitButton.classList.add('mod-cta');

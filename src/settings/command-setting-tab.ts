@@ -12,7 +12,7 @@ import { parseVimKey } from '../utils/vim-key-parser';
  */
 export class CommandSettingTab extends PluginSettingTab {
 	plugin: CommandGroupPlugin;
-	// イベントリスナーの参照を保持するための配列
+	// Array to hold references to event listeners
 	private eventListeners: Array<{ element: HTMLElement, type: string, listener: EventListener }> = [];
 
 	constructor(app: App, plugin: CommandGroupPlugin) {
@@ -20,13 +20,13 @@ export class CommandSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
-	// イベントリスナーを追加し、参照を保持するヘルパーメソッド
+	// Helper method to add event listener and store reference
 	addListener(element: HTMLElement, type: string, listener: EventListener) {
 		element.addEventListener(type, listener);
 		this.eventListeners.push({ element, type, listener });
 	}
 
-	// すべてのイベントリスナーを削除するメソッド
+	// Remove all event listeners
 	removeAllListeners() {
 		this.eventListeners.forEach(({ element, type, listener }) => {
 			try {
@@ -38,7 +38,7 @@ export class CommandSettingTab extends PluginSettingTab {
 		this.eventListeners = [];
 	}
 
-	// ドラッグ＆ドロップのヘルパー関数
+	// Helper function for drag and drop
 	setupDragAndDrop(
 		element: HTMLElement,
 		type: 'group' | 'command',
@@ -46,10 +46,10 @@ export class CommandSettingTab extends PluginSettingTab {
 		groupIndex?: number,
 		onDrop?: (sourceType: string, sourceIndex: number, sourceGroupIndex: number, targetIndex: number, targetGroupIndex: number) => Promise<void>
 	) {
-		// データ形式の定義
+		// Define data type
 		const dataType = type === 'group' ? 'application/group-data' : 'application/command-data';
 
-		// ドラッグ開始
+		// Drag start
 		this.addListener(element, 'dragstart', (e: Event) => {
 			const dragEvent = e as DragEvent;
 			if (type === 'command') {
@@ -57,7 +57,7 @@ export class CommandSettingTab extends PluginSettingTab {
 			}
 
 			if (dragEvent.dataTransfer) {
-				// グループインデックスを要素から取得
+				// Get group index from element
 				const currentGroupIndex = type === 'command'
 					? parseInt(element.getAttribute('data-group-index') || '-1')
 					: index;
@@ -77,12 +77,12 @@ export class CommandSettingTab extends PluginSettingTab {
 			}, 0);
 		});
 
-		// ドラッグ終了
+		// Drag end
 		this.addListener(element, 'dragend', () => {
 			element.classList.remove('dragging');
 		});
 
-		// ドラッグオーバー
+		// Drag over
 		this.addListener(element, 'dragover', (e: Event) => {
 			e.preventDefault();
 			if (type === 'command') {
@@ -91,12 +91,12 @@ export class CommandSettingTab extends PluginSettingTab {
 			element.classList.add('drag-over');
 		});
 
-		// ドラッグリーブ
+		// Drag leave
 		this.addListener(element, 'dragleave', () => {
 			element.classList.remove('drag-over');
 		});
 
-		// ドロップ
+		// Drop
 		this.addListener(element, 'drop', async (e: Event) => {
 			e.preventDefault();
 			if (type === 'command') {
@@ -106,12 +106,12 @@ export class CommandSettingTab extends PluginSettingTab {
 
 			const dragEvent = e as DragEvent;
 
-			// 現在のグループインデックスを取得
+			// Get current group index
 			const currentGroupIndex = type === 'command'
 				? parseInt(element.getAttribute('data-group-index') || '-1')
 				: -1;
 
-			// グループデータの取得を試みる
+			// Try to get group data
 			try {
 				const groupDataStr = dragEvent.dataTransfer?.getData('application/group-data');
 				if (groupDataStr) {
@@ -125,7 +125,7 @@ export class CommandSettingTab extends PluginSettingTab {
 				console.error('Error parsing group drag data:', error);
 			}
 
-			// コマンドデータの取得を試みる
+			// Try to get command data
 			try {
 				const commandDataStr = dragEvent.dataTransfer?.getData('application/command-data');
 				if (commandDataStr && onDrop) {
@@ -140,7 +140,7 @@ export class CommandSettingTab extends PluginSettingTab {
 		});
 	}
 
-	// 新しいグループを追加する共通ロジック
+	// Common logic to add a new group
 	async addNewGroup(groupName: string) {
 		try {
 			// Add new group
@@ -160,7 +160,7 @@ export class CommandSettingTab extends PluginSettingTab {
 		}
 	}
 
-	// グループ要素を作成するヘルパーメソッド
+	// Helper method to create group element
 	createGroupElement(
 		containerEl: HTMLElement,
 		group: {
@@ -183,16 +183,16 @@ export class CommandSettingTab extends PluginSettingTab {
 			}
 		});
 
-		// グループのドラッグ＆ドロップを設定
+		// Setup drag and drop for group
 		this.setupDragAndDrop(groupEl, 'group', groupIndex, undefined, handleDrop);
 
-		// コマンドのドロップイベントを追加
+		// Add drop event for commands
 		this.addListener(groupEl, 'dragover', (e: Event) => {
 			e.preventDefault();
 			const dragEvent = e as DragEvent;
-			// コマンドデータの場合のみドロップを許可
+			// Allow drop only for command data
 			if (dragEvent.dataTransfer?.types.includes('application/command-data')) {
-				e.stopPropagation(); // グループのドラッグイベントを停止
+				e.stopPropagation(); // Stop group drag event
 				groupEl.classList.add('drag-over');
 			}
 		});
@@ -216,7 +216,7 @@ export class CommandSettingTab extends PluginSettingTab {
 					if (commandDataStr) {
 						const data = JSON.parse(commandDataStr);
 						if (data.type === 'command') {
-							// グループへのドロップは、そのグループの最後に追加する
+							// Drop on group adds to the end of that group
 							await handleDrop('command', data.commandIndex, data.groupIndex, group.commands.length, groupIndex);
 						}
 					}
@@ -245,7 +245,7 @@ export class CommandSettingTab extends PluginSettingTab {
 					group.name = value;
 					await this.plugin.saveSettingsAndRegisterCommands();
 				});
-			// スタイルの調整
+			// Style adjustments
 			text.inputEl.style.width = '100%';
 			text.inputEl.style.minWidth = '200px';
 			text.inputEl.style.flexGrow = '1';
@@ -321,7 +321,7 @@ export class CommandSettingTab extends PluginSettingTab {
 		return groupEl;
 	}
 
-	// コマンドコンテナを作成するヘルパーメソッド
+	// Helper method to create commands container
 	createCommandsContainer(
 		groupEl: HTMLElement,
 		group: {
@@ -341,7 +341,7 @@ export class CommandSettingTab extends PluginSettingTab {
 			cls: 'commands-container'
 		});
 
-		// 空のグループの場合のメッセージ表示
+		// Show message for empty group
 		if (group.commands.length === 0) {
 			const emptyMessage = commandsContainerEl.createEl('div', {
 				cls: 'empty-commands-message',
@@ -356,7 +356,7 @@ export class CommandSettingTab extends PluginSettingTab {
 		return commandsContainerEl;
 	}
 
-	// コマンド要素を作成するヘルパーメソッド
+	// Helper method to create command element
 	createCommandElement(
 		containerEl: HTMLElement,
 		command: {
@@ -380,7 +380,7 @@ export class CommandSettingTab extends PluginSettingTab {
 			}
 		});
 
-		// コマンドのドラッグ＆ドロップ設定
+		// Setup drag and drop for command
 		this.setupDragAndDrop(commandItemEl, 'command', commandIndex, groupIndex, handleDrop);
 
 		// Add drag handle
@@ -518,7 +518,7 @@ export class CommandSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		// 既存のリスナーをクリーンアップ
+		// Clean up existing listeners
 		this.removeAllListeners();
 
 		const { containerEl } = this;
@@ -532,7 +532,7 @@ export class CommandSettingTab extends PluginSettingTab {
 			cls: 'command-list-container'
 		});
 
-		// ドロップ処理の共通関数
+		// Common function for drop handling
 		const handleDrop = async (
 			sourceType: string,
 			sourceIndex: number,
@@ -541,18 +541,18 @@ export class CommandSettingTab extends PluginSettingTab {
 			targetGroupIndex: number
 		) => {
 			if (sourceType === 'group' && targetGroupIndex === -1) {
-				// グループの移動
+				// Move group
 				if (sourceIndex === targetIndex) return;
 
 				const draggedGroup = this.plugin.settings.commandGroups[sourceIndex];
 				this.plugin.settings.commandGroups.splice(sourceIndex, 1);
 				this.plugin.settings.commandGroups.splice(targetIndex, 0, draggedGroup);
 			} else if (sourceType === 'command') {
-				// コマンドの移動
+				// Move command
 				const sourceGroup = this.plugin.settings.commandGroups[sourceGroupIndex];
 
 				if (targetGroupIndex === -1) {
-					// コマンドコンテナへのドロップ（グループの最後に追加）
+					// Drop on command container (add to end of group)
 					targetGroupIndex = sourceGroupIndex;
 				}
 
@@ -560,28 +560,28 @@ export class CommandSettingTab extends PluginSettingTab {
 
 				if (!sourceGroup || !targetGroup) return;
 
-				// 同じグループ内での移動
+				// Move within same group
 				if (sourceGroupIndex === targetGroupIndex) {
 					const draggedCommand = sourceGroup.commands[sourceIndex];
 					sourceGroup.commands.splice(sourceIndex, 1);
 
 					if (targetIndex < sourceGroup.commands.length) {
-						// 特定の位置に挿入
+						// Insert at specific position
 						sourceGroup.commands.splice(targetIndex, 0, draggedCommand);
 					} else {
-						// 最後に追加
+						// Add to end
 						sourceGroup.commands.push(draggedCommand);
 					}
 				} else {
-					// 異なるグループ間での移動
+					// Move between different groups
 					const draggedCommand = sourceGroup.commands[sourceIndex];
 					sourceGroup.commands.splice(sourceIndex, 1);
 
 					if (targetIndex < targetGroup.commands.length) {
-						// 特定の位置に挿入
+						// Insert at specific position
 						targetGroup.commands.splice(targetIndex, 0, draggedCommand);
 					} else {
-						// 最後に追加
+						// Add to end
 						targetGroup.commands.push(draggedCommand);
 					}
 				}
@@ -593,13 +593,13 @@ export class CommandSettingTab extends PluginSettingTab {
 
 		// Display existing command groups
 		this.plugin.settings.commandGroups.forEach((group, groupIndex) => {
-			// グループ要素を作成
+			// Create group element
 			const groupEl = this.createGroupElement(commandListEl, group, groupIndex, handleDrop);
 
-			// コマンドコンテナを作成
+			// Create commands container
 			const commandsContainerEl = this.createCommandsContainer(groupEl, group, groupIndex, handleDrop);
 
-			// コマンドを表示
+			// Display commands
 			group.commands.forEach((command, commandIndex) => {
 				this.createCommandElement(commandsContainerEl, command, commandIndex, groupIndex, handleDrop);
 			});

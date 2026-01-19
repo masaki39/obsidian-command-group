@@ -58,10 +58,10 @@ export class CommandGroupPlugin extends Plugin {
 		const data = await this.loadData();
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
 
-		// 古いデータ形式からの移行処理
-		// data.jsonに古いcommandsプロパティが存在する場合は削除
+		// Migration from old data format
+		// Remove old commands property if it exists in data.json
 		if (data && 'commands' in data) {
-			// 古いcommandsプロパティを削除
+			// Delete old commands property
 			delete (this.settings as any).commands;
 			console.log('Migrated from old data format (removed commands property)');
 		}
@@ -95,7 +95,7 @@ export class CommandGroupPlugin extends Plugin {
 		} catch (error) {
 			console.error('Error saving settings and registering commands:', error);
 			new Notice('Failed to save settings. Check console for details.');
-			throw error; // 呼び出し元でもエラーハンドリングできるように再スロー
+			throw error; // Re-throw to allow caller to handle error
 		}
 	}
 
@@ -123,17 +123,17 @@ export class CommandGroupPlugin extends Plugin {
 					id: commandId,
 					name: `${group.name}`,
 					callback: () => {
-						// コマンドがない場合の処理
+						// Handle empty group
 						if (group.commands.length === 0) {
 							new Notice('No commands in this group');
 							return;
 						}
 
-						// コマンドが1つの場合は直接実行
+						// Execute directly if only one command
 						if (group.commands.length === 1) {
 							const command = group.commands[0];
 							try {
-								// コマンドが存在するか確認
+								// Check if command exists
 								const obsidianCommand = this.app.commands.findCommand(command.obsidianCommand);
 								if (!obsidianCommand) {
 									new Notice(`Command not found: ${command.obsidianCommand}`);
@@ -153,7 +153,7 @@ export class CommandGroupPlugin extends Plugin {
 							return;
 						}
 
-						// 複数のコマンドがある場合は選択モーダルを表示
+						// Show selection modal when multiple commands exist
 						// Convert commands to selection items
 						const items: SelectionItem[] = group.commands.map(cmd => {
 							const obsidianCommand = this.app.commands.findCommand(cmd.obsidianCommand);
