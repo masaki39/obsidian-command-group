@@ -306,7 +306,7 @@ export class CommandSettingTab extends PluginSettingTab {
 					// Show confirmation modal
 					new ConfirmationModal(
 						this.app,
-						`Are you sure you want to delete "${group.name}"? This action cannot be undone.`,
+						`Are you sure you want to delete "${group.name}"?\nThis action cannot be undone.`,
 						async () => {
 							// Delete group
 							this.plugin.settings.commandGroups.splice(groupIndex, 1);
@@ -345,11 +345,12 @@ export class CommandSettingTab extends PluginSettingTab {
 		if (group.commands.length === 0) {
 			const emptyMessage = commandsContainerEl.createEl('div', {
 				cls: 'empty-commands-message',
-				text: 'No commands in this group. Use the "+ Add" button in the group header to add commands.'
+				text: 'No commands in this group.\nUse the "+ Add" button in the group header to add commands.'
 			});
 			emptyMessage.style.color = 'var(--text-muted)';
 			emptyMessage.style.padding = '8px';
 			emptyMessage.style.fontStyle = 'italic';
+			emptyMessage.style.whiteSpace = 'pre-wrap';
 		}
 
 		return commandsContainerEl;

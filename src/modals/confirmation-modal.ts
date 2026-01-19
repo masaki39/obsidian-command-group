@@ -36,6 +36,8 @@ export class ConfirmationModal extends Modal {
 		contentEl.createEl('p', {
 			text: this.message,
 			cls: 'confirmation-message'
+		}, (el) => {
+			el.style.whiteSpace = 'pre-wrap';
 		});
 
 		// Button container
