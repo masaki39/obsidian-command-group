@@ -89,8 +89,8 @@ A: Yes! Modifier letters are case-insensitive, so `<c-a>` and `<C-a>` both work.
 **Q: Why doesn't my incomplete key like `<c` work?**
 A: The validation now runs when you leave the field (on blur), so you can type incomplete sequences. Just make sure the final sequence is complete and valid.
 
-**Q: Can I use special characters like `@` or `#`?**
-A: Yes, most single characters work as-is. Some may need angle bracket notation depending on your keyboard layout.
+**Q: Can I use special characters like `*`, `@`, or `#`?**
+A: Yes! Single characters (including special characters) work as-is. The plugin detects the actual key you press, so it works regardless of your keyboard layout (US, JIS, etc.). For example, typing `*` as a sequence key will trigger when you press the key that produces `*` on your keyboard.
 
 **Q: How do I set a hotkey for the entire group?**
 A: Click the **Configure Hotkey** button (🔑) in the group header, which opens Obsidian's hotkey settings pre-filtered to your group.
