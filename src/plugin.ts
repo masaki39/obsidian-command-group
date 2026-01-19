@@ -9,6 +9,7 @@ import { CommandSettingTab } from './settings/command-setting-tab';
  */
 export class CommandGroupPlugin extends Plugin {
 	settings: CommandGroupSettings;
+	private activeCommandGroupModal: ArrowKeySelectionModal | null = null;
 
 	async onload() {
 		try {
@@ -26,6 +27,12 @@ export class CommandGroupPlugin extends Plugin {
 	}
 
 	onunload() {
+		// Close active modal if one is open
+		if (this.activeCommandGroupModal) {
+			this.activeCommandGroupModal.close();
+			this.activeCommandGroupModal = null;
+		}
+
 		// Cleanup when plugin is disabled
 		try {
 			// Clean up registered commands
@@ -165,7 +172,14 @@ export class CommandGroupPlugin extends Plugin {
 							};
 						});
 
-						new ArrowKeySelectionModal(
+						// Close existing modal if one is already open
+						if (this.activeCommandGroupModal) {
+							this.activeCommandGroupModal.close();
+							this.activeCommandGroupModal = null;
+						}
+
+						// Create new modal
+						const modal = new ArrowKeySelectionModal(
 							this.app,
 							group.name,
 							items,
@@ -189,7 +203,24 @@ export class CommandGroupPlugin extends Plugin {
 									new Notice(`Error executing command: ${error instanceof Error ? error.message : String(error)}`);
 								}
 							}
-						).open();
+						);
+
+						// Save reference to active modal
+						this.activeCommandGroupModal = modal;
+
+						// Hook onClose to clear reference when modal is closed
+						const originalOnClose = modal.onClose.bind(modal);
+						modal.onClose = () => {
+							// Clear reference when modal is closed
+							if (this.activeCommandGroupModal === modal) {
+								this.activeCommandGroupModal = null;
+							}
+							// Execute original cleanup
+							originalOnClose();
+						};
+
+						// Open the modal
+						modal.open();
 					}
 				});
 			});
