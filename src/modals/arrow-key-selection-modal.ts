@@ -150,18 +150,18 @@ export class ArrowKeySelectionModal extends Modal {
 		// Arrow Up
 		this.scope.register([], 'ArrowUp', (evt) => {
 			evt.preventDefault();
-			if (this.selectedIndex > 0) {
-				this.setSelectedIndex(this.selectedIndex - 1);
-			}
+			const lastIndex = this.items.length - 1;
+			const newIndex = this.selectedIndex > 0 ? this.selectedIndex - 1 : lastIndex;
+			this.setSelectedIndex(newIndex);
 			return false;
 		});
 
 		// Arrow Down
 		this.scope.register([], 'ArrowDown', (evt) => {
 			evt.preventDefault();
-			if (this.selectedIndex < this.items.length - 1) {
-				this.setSelectedIndex(this.selectedIndex + 1);
-			}
+			const lastIndex = this.items.length - 1;
+			const newIndex = this.selectedIndex < lastIndex ? this.selectedIndex + 1 : 0;
+			this.setSelectedIndex(newIndex);
 			return false;
 		});
 
