@@ -20,6 +20,22 @@ describe('parseVimKey', () => {
       expect(result.modifiers).toEqual([]);
       expect(result.key).toBe('5');
     });
+
+    test('parses special character (keyboard-dependent)', () => {
+      // Special characters are accepted as-is, without keyboard layout mapping
+      // The actual key matching happens at runtime based on keyboard events
+      const result1 = parseVimKey('*');
+      expect(result1.modifiers).toEqual([]);
+      expect(result1.key).toBe('*');
+
+      const result2 = parseVimKey('@');
+      expect(result2.modifiers).toEqual([]);
+      expect(result2.key).toBe('@');
+
+      const result3 = parseVimKey('#');
+      expect(result3.modifiers).toEqual([]);
+      expect(result3.key).toBe('#');
+    });
   });
 
   describe('special keys', () => {
@@ -169,6 +185,59 @@ describe('parseVimKey', () => {
       expect(ctrlShiftA.modifiers).toContain('Ctrl');
       expect(ctrlShiftA.modifiers).toContain('Shift');
       expect(ctrlShiftA.key).toBe('a');
+    });
+
+    test('modifier order independence', () => {
+      // <C-S-x> and <S-C-x> should be treated as equivalent
+      const result1 = parseVimKey('<C-S-x>');
+      const result2 = parseVimKey('<S-C-x>');
+
+      // Both should have the same modifiers (order may differ)
+      expect(result1.modifiers.sort()).toEqual(result2.modifiers.sort());
+      expect(result1.key).toBe(result2.key);
+
+      // More complex example
+      const result3 = parseVimKey('<C-A-S-M-z>');
+      const result4 = parseVimKey('<M-S-A-C-z>');
+      expect(result3.modifiers.sort()).toEqual(result4.modifiers.sort());
+      expect(result3.key).toBe(result4.key);
+    });
+  });
+
+  describe('duplicate detection scenarios', () => {
+    test('different notations for same key should normalize to same result', () => {
+      // For duplicate detection, these should be considered the same:
+      const variations = [
+        parseVimKey('A'),       // Uppercase letter
+        parseVimKey('<S-a>'),   // Vim notation
+        parseVimKey('<s-a>'),   // Lowercase modifier
+      ];
+
+      // All should normalize to Shift+a
+      for (const result of variations) {
+        expect(result.modifiers).toEqual(['Shift']);
+        expect(result.key).toBe('a');
+      }
+    });
+
+    test('different modifier orders should be comparable', () => {
+      const result1 = parseVimKey('<C-S-x>');
+      const result2 = parseVimKey('<S-C-x>');
+
+      // For duplicate detection, need to sort modifiers before comparison
+      const sorted1 = [...result1.modifiers].sort();
+      const sorted2 = [...result2.modifiers].sort();
+
+      expect(sorted1).toEqual(sorted2);
+      expect(result1.key).toBe(result2.key);
+    });
+
+    test('case-insensitive modifier parsing', () => {
+      const result1 = parseVimKey('<C-a>');
+      const result2 = parseVimKey('<c-a>');
+
+      expect(result1.modifiers).toEqual(result2.modifiers);
+      expect(result1.key).toBe(result2.key);
     });
   });
 });
