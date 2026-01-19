@@ -33,6 +33,17 @@ const SPECIAL_KEY_MAP: Record<string, string> = {
 };
 
 /**
+ * Map shifted characters to their base key (US keyboard layout)
+ */
+const SHIFTED_CHAR_MAP: Record<string, string> = {
+	'!': '1', '@': '2', '#': '3', '$': '4', '%': '5',
+	'^': '6', '&': '7', '*': '8', '(': '9', ')': '0',
+	'_': '-', '+': '=', '{': '[', '}': ']', '|': '\\',
+	':': ';', '"': "'", '<': ',', '>': '.', '?': '/',
+	'~': '`'
+};
+
+/**
  * Keys that are reserved for modal navigation and cannot be used as sequence keys
  */
 const RESERVED_KEYS = new Set([
@@ -74,6 +85,14 @@ export function parseVimKey(input: string): ParsedVimKey {
 	// Single character (backwards compatible)
 	if (trimmed.length === 1) {
 		const char = trimmed;
+
+		// Check if special shifted character (*, @, #, etc.)
+		if (SHIFTED_CHAR_MAP[char]) {
+			return {
+				modifiers: ['Shift'],
+				key: SHIFTED_CHAR_MAP[char]
+			};
+		}
 
 		// Check if uppercase letter
 		if (/[A-Z]/.test(char)) {

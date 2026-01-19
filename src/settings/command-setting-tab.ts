@@ -424,7 +424,17 @@ export class CommandSettingTab extends PluginSettingTab {
 					}
 				});
 
-			let debounceTimer: NodeJS.Timeout | null = null;
+			// Helper function to normalize keys for comparison
+			const normalizeKey = (keySeq: string): { modifiers: string[], key: string } | null => {
+				try {
+					const parsed = parseVimKey(keySeq);
+					// Sort modifiers for consistent comparison
+					const sortedMods = [...parsed.modifiers].sort();
+					return { modifiers: sortedMods, key: parsed.key.toLowerCase() };
+				} catch {
+					return null; // Invalid key
+				}
+			};
 
 			// Validation function
 			const validateKey = async (value: string) => {
@@ -447,10 +457,15 @@ export class CommandSettingTab extends PluginSettingTab {
 
 				// Check for duplicates within the same group
 				const group = this.plugin.settings.commandGroups[groupIndex];
-				const duplicate = group.commands.some((cmd, idx) =>
-					idx !== commandIndex &&
-					cmd.sequenceKey === trimmedValue
-				);
+				const normalized = normalizeKey(trimmedValue);
+				const duplicate = group.commands.some((cmd, idx) => {
+					if (idx === commandIndex || !cmd.sequenceKey) return false;
+					const existingNormalized = normalizeKey(cmd.sequenceKey);
+					if (!normalized || !existingNormalized) return false;
+
+					return normalized.key === existingNormalized.key &&
+						JSON.stringify(normalized.modifiers) === JSON.stringify(existingNormalized.modifiers);
+				});
 
 				if (duplicate) {
 					text.inputEl.style.border = '2px solid var(--background-modifier-error)';
@@ -465,24 +480,8 @@ export class CommandSettingTab extends PluginSettingTab {
 				return true;
 			};
 
-			// Debounced validation on input (optional live feedback)
-			this.addListener(text.inputEl, 'input', () => {
-				if (debounceTimer) {
-					clearTimeout(debounceTimer);
-				}
-				debounceTimer = setTimeout(() => {
-					const currentValue = text.inputEl.value;
-					if (currentValue.trim() !== '') {
-						validateKey(currentValue);
-					}
-				}, 500);
-			});
-
 			// Validate on blur (when user leaves the field)
 			this.addListener(text.inputEl, 'blur', async () => {
-				if (debounceTimer) {
-					clearTimeout(debounceTimer);
-				}
 				const currentValue = text.inputEl.value;
 				const isValid = await validateKey(currentValue);
 
