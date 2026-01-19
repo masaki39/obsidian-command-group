@@ -43,3 +43,33 @@ export class PluginSettingTab {
     // Mock hide
   }
 }
+
+export class Modal {
+  app: any;
+  contentEl: HTMLElement;
+  scope: any;
+
+  constructor(app: any) {
+    this.app = app;
+    this.contentEl = document.createElement('div');
+    this.scope = {
+      register: jest.fn()
+    };
+  }
+
+  open(): void {
+    this.onOpen();
+  }
+
+  close(): void {
+    this.onClose();
+  }
+
+  onOpen(): void {
+    // Mock onOpen
+  }
+
+  onClose(): void {
+    // Mock onClose
+  }
+}
