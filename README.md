@@ -6,12 +6,17 @@ Group and execute multiple Obsidian commands as custom command groups.
 
 ## ✨️Features
 
+<img src="assets/demo_settings.gif" width="100%">
+
 - Create command groups to execute multiple commands.
 - Drag and drop commands to reorder them.
 - Drag and drop groups to reorder them.
+
+<img src="assets/demo_settings.gif" width="100%">
+
 - [Vim-style key notation](#key-notation-guide) for sequence keys.
 
-## Usage
+## 📖Usage
 
 1. Enable community plugins in settings.
 2. Install via [BRAT](https://github.com/TfTHacker/obsidian42-brat) (Recommended).
@@ -21,7 +26,7 @@ Group and execute multiple Obsidian commands as custom command groups.
 
 ## ⚙️Key Notation Guide
 
-### Basic Notation
+### 📌Basic Notation
 
 Command Group uses Vim-style key notation for sequence keys. You can use:
 
@@ -30,7 +35,7 @@ Command Group uses Vim-style key notation for sequence keys. You can use:
 - **Special keys**: `<Space>`, `<Tab>`, `<F1>`, etc.
 - **Modifiers**: `C` (Ctrl), `S` (Shift), `A` (Alt), `M` (Meta/Cmd/Win)
 
-### Modifier Keys
+### ⚡️Modifier Keys
 
 | Modifier | Meaning | Example |
 |----------|---------|---------|
@@ -41,7 +46,7 @@ Command Group uses Vim-style key notation for sequence keys. You can use:
 
 You can combine multiple modifiers: `<C-S-x>` = Ctrl+Shift+x
 
-### Special Keys
+### 💎Special Keys
 
 | Notation | Key | Notation | Key |
 |----------|-----|----------|-----|
@@ -51,7 +56,7 @@ You can combine multiple modifiers: `<C-S-x>` = Ctrl+Shift+x
 | `<PageUp>` | Page Up | `<PageDown>` | Page Down |
 | `<F1>` - `<F12>` | Function keys | | |
 
-### Examples
+### 📝Examples
 
 | Input | Meaning | Use Case |
 |-------|---------|----------|
@@ -64,7 +69,7 @@ You can combine multiple modifiers: `<C-S-x>` = Ctrl+Shift+x
 | `<F1>` | F1 key | Function key |
 | `<M-c>` | Meta/Cmd/Win+c | Platform-specific Meta key |
 
-### Reserved Keys
+### 🚫Reserved Keys
 
 The following keys are reserved for modal navigation and cannot be used as sequence keys:
 
@@ -73,7 +78,7 @@ The following keys are reserved for modal navigation and cannot be used as seque
 
 These keys are needed to navigate and close the command selection modal.
 
-### 🙋FAQ
+### 💡FAQ
 
 **Q: What's the difference between `A` and `<S-a>`?**
 A: Both work identically and produce Shift+a. Use whichever feels more natural.
