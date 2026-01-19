@@ -1,6 +1,6 @@
 {
 	"name": "command-group",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"description": "Create custom menus by grouping your favorite commands together",
 	"main": "main.js",
 	"scripts": {
