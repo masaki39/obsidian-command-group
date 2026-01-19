@@ -12,11 +12,11 @@ Group and execute multiple Obsidian commands as custom command groups.
 - Drag and drop commands to reorder them.
 - Drag and drop groups to reorder them.
 
-<img src="assets/demo_settings.gif" width="100%">
+<img src="assets/demo_seq-keys.gif" width="100%">
 
-- [Vim-style key notation](#key-notation-guide) for sequence keys.
+- [Vim-style key notation](#️key-notation-guide) for sequence keys.
 
-## 📖Usage
+## 🛠️Usage
 
 1. Enable community plugins in settings.
 2. Install via [BRAT](https://github.com/TfTHacker/obsidian42-brat) (Recommended).
@@ -24,7 +24,7 @@ Group and execute multiple Obsidian commands as custom command groups.
 4. Create a new group or edit an existing group.
 5. Add commands to the group.
 
-## ⚙️Key Notation Guide
+## ⌨️Key Notation Guide
 
 ### 📌Basic Notation
 
