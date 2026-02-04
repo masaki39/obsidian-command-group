@@ -51,7 +51,16 @@ export class ArrowKeySelectionModal extends Modal {
 		});
 
 		// Style the list container
-		this.listContainer.style.maxHeight = '400px';
+		// Calculate dynamic max-height (70% of window height)
+		const win = contentEl.win || window;
+		const windowHeight = win.innerHeight;
+		const maxHeight = Math.floor(windowHeight * 0.7);
+
+		// Set minimum max-height to ensure usability even on small screens
+		const MIN_HEIGHT = 200;
+		const finalMaxHeight = Math.max(maxHeight, MIN_HEIGHT);
+
+		this.listContainer.style.maxHeight = `${finalMaxHeight}px`;
 		this.listContainer.style.overflowY = 'auto';
 		this.listContainer.style.marginTop = '12px';
 
@@ -186,7 +195,8 @@ export class ArrowKeySelectionModal extends Modal {
 		// This allows special characters and different keyboard layouts to work correctly
 		// Listen at document level to ensure we capture all keydown events when modal is open
 		this.sequenceKeyHandler = this.handleSequenceKeyEvent.bind(this);
-		document.addEventListener('keydown', this.sequenceKeyHandler, true);
+		const doc = this.contentEl.doc || document;
+		doc.addEventListener('keydown', this.sequenceKeyHandler, true);
 	}
 
 	private handleSequenceKeyEvent(event: KeyboardEvent) {
@@ -300,7 +310,8 @@ export class ArrowKeySelectionModal extends Modal {
 		const { contentEl } = this;
 		// Clean up event listener
 		if (this.sequenceKeyHandler) {
-			document.removeEventListener('keydown', this.sequenceKeyHandler, true);
+			const doc = contentEl.doc || document;
+			doc.removeEventListener('keydown', this.sequenceKeyHandler, true);
 		}
 		contentEl.empty();
 	}
