@@ -18,10 +18,15 @@ jobs:
         with:
           node-version: "18.x"
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Build plugin
         run: |
-          npm install
-          npm run build
+          pnpm install
+          pnpm run build
 
       - name: Create release
         env:
@@ -31,4 +36,4 @@ jobs:
 
           gh release create "$tag" \
             --title="$tag" \
-            main.js manifest.json
+            main.js manifest.json styles.css

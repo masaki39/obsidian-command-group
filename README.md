@@ -15,6 +15,7 @@ Group commands and select them quickly with custom keyboard shortcuts.
 <img src="assets/demo_seq-keys.gif" width="100%">
 
 - [Vim-style key notation](#️key-notation-guide) for sequence keys.
+- Auto-assigned hotkeys for commands without a sequence key (homerow priority: `a`, `s`, `d`, `f`, ...).
 
 ## 🛠️Usage
 
@@ -68,6 +69,16 @@ You can combine multiple modifiers: `<C-S-x>` = Ctrl+Shift+x
 | `<Space>` | Spacebar | Spacebar trigger |
 | `<F1>` | F1 key | Function key |
 | `<M-c>` | Meta/Cmd/Win+c | Platform-specific Meta key |
+
+### 🤖Auto-assigned Keys
+
+Commands without a sequence key automatically get a key assigned when the selection modal opens. Keys are assigned in homerow-first priority order:
+
+```
+a s d f g h j k l  →  q w e r t y u i o p  →  z x c v b n m  →  1–9 0
+```
+
+Auto-assigned keys appear as **dimmed badges** in the modal. User-defined keys always take priority and are never overridden.
 
 ### 🚫Reserved Keys
 
