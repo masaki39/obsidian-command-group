@@ -8,24 +8,29 @@
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
-		"test": "jest",
-		"test:watch": "jest --watch",
-		"test:coverage": "jest --coverage"
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "MIT",
+	"pnpm": {
+		"overrides": {
+			"js-yaml": "4.1.1",
+			"minimatch@3": "3.1.4",
+			"minimatch@9": "9.0.7",
+			"ajv": "6.14.0"
+		}
+	},
 	"devDependencies": {
-		"@jest/globals": "^30.2.0",
-		"@types/jest": "^30.0.0",
 		"@types/node": "^16.11.6",
 		"@typescript-eslint/eslint-plugin": "^7.0.0",
 		"@typescript-eslint/parser": "^7.0.0",
-		"esbuild": "0.17.3",
-		"jest": "^30.2.0",
+		"esbuild": "0.28.0",
 		"obsidian": "latest",
-		"ts-jest": "^29.4.6",
 		"tslib": "2.4.0",
-		"typescript": "4.7.4"
+		"typescript": "4.7.4",
+		"vitest": "^4.1.7"
 	}
 }
